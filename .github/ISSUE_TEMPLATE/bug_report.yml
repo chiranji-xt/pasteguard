@@ -1,0 +1,43 @@
+name: Bug or site problem
+description: Something does not work, or a chat site misbehaves
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please do not paste a real secret here.** In Settings, "Try it" can make a block of made-up secrets that reproduces most problems.
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      placeholder: "claude.ai"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: "Chrome 140, Firefox 143"
+    validations:
+      required: true
+  - type: input
+    id: step
+    attributes:
+      label: Which step of docs/MANUAL_TEST.md failed?
+      placeholder: "Step 3: Redact and paste put the text in twice"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Any errors in the page console?
+      description: Press F12, open Console, and paste red lines that mention Paste Guard (check they contain no secrets).
+  - type: input
+    id: version
+    attributes:
+      label: Paste Guard version
+      placeholder: "0.1.0"

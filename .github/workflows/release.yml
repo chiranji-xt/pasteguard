@@ -1,0 +1,33 @@
+name: Release
+
+# Push a tag like v0.1.0 to publish a GitHub release with the Chrome and Firefox packages attached.
+# The tag must match the version in package.json. Uploading to the Chrome Web Store and Firefox Add-ons
+# is done by hand from those zips (see docs/RELEASING.md).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: The tag matches the package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+      - run: npm test
+      - run: npm run package
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "Paste Guard $GITHUB_REF_NAME" --generate-notes

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+        node: ["20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+
+  package:
+    name: build both browsers and check the packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npm run package
+      - name: The zips contain what they should
+        run: |
+          for browser in chrome firefox; do
+            unzip -l "dist/pasteguard-$browser-"*.zip | grep -q "manifest.json"
+            unzip -l "dist/pasteguard-$browser-"*.zip | grep -q "content/content.js"
+            unzip -p "dist/pasteguard-$browser-"*.zip manifest.json | node -e "const m = JSON.parse(require('fs').readFileSync(0, 'utf8')); if (m.manifest_version !== 3) process.exit(1); console.log('$browser manifest ok, version', m.version)"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pasteguard-packages
+          path: dist/*.zip
+          if-no-files-found: error
+
+  # Mozilla's own linter for the Firefox build. Advisory for now: it is the closest thing to a store review
+  # that can run in CI, but its rules change, so a new warning should not block unrelated work.
+  firefox-lint:
+    name: lint the Firefox build (advisory)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npm run build
+      - run: npx --yes web-ext lint --source-dir dist/firefox
