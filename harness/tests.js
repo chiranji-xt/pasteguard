@@ -9,6 +9,12 @@
   const KEY = () => 'gh' + 'p_' + rnd(36);
   const KEY2 = () => 'AKIA' + Array.from({ length: 16 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[Math.floor(Math.random() * 32)]).join('');
   const settle = (ms = 40) => new Promise((r) => setTimeout(r, ms));
+  // Wait until the content script has finished whatever it was doing (a redaction takes a few steps).
+  const idle = async () => {
+    await settle(30);
+    for (let i = 0; i < 40 && PG.content.state().busy; i++) await settle(50);
+    await settle(30);
+  };
   const $ = (id) => document.getElementById(id);
   const shadow = () => PG.ui.__shadow && PG.ui.__shadow();
   const dialog = () => shadow() && shadow().querySelector('.dialog');
@@ -35,6 +41,7 @@
     $('file').dispatchEvent(new Event('change', { bubbles: true }));
   }
   async function reset() {
+    await idle(); // never start a check while the previous one's redaction is still running
     while (dialog()) { (button('Cancel') || button("Don't attach")).click(); await settle(); }
     for (const id of ['ta', 'inp']) $(id).value = '';
     for (const id of ['ce', 'rich']) $(id).textContent = '';
@@ -136,6 +143,36 @@
     await settle();
     if (window.__richPastes !== 1) return 'the editor handled ' + window.__richPastes + ' pastes';
     return $('rich').textContent === 'key [REDACTED:GITHUB_TOKEN]' || 'got: ' + JSON.stringify($('rich').textContent);
+  });
+
+  function selectIn(el, from, to) {
+    const node = el.firstChild;
+    const range = document.createRange();
+    range.setStart(node, from);
+    range.setEnd(node, to);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  check('rich editor: pasting over a selected phrase replaces only that phrase', async () => {
+    $('rich').textContent = 'hello WORLD end';
+    $('rich').focus();
+    selectIn($('rich'), 6, 11);
+    await settle(80); // the editor notices a selection a moment after it is made, as real ones do
+    paste($('rich'), KEY());
+    button('Redact and paste').click();
+    await settle(120);
+    return $('rich').textContent === 'hello [REDACTED:GITHUB_TOKEN] end' || 'got: ' + $('rich').textContent;
+  });
+  check('rich editor: pasting at a caret in the middle of existing text', async () => {
+    $('rich').textContent = 'before after';
+    $('rich').focus();
+    selectIn($('rich'), 7, 7);
+    await settle(80);
+    paste($('rich'), 'X ' + KEY() + ' Y');
+    button('Redact and paste').click();
+    await settle(120);
+    return $('rich').textContent === 'before X [REDACTED:GITHUB_TOKEN] Yafter' || 'got: ' + $('rich').textContent;
   });
 
   // --- the ignore list and the dialog ----------------------------------------------------------------
@@ -367,15 +404,40 @@
     await settle(LIVE_WAIT);
     if (!live()) return 'no warning in the contenteditable';
     liveButton('Redact').click();
-    await settle();
+    await idle();
     if ($('ce').textContent !== 'a [REDACTED:GITHUB_TOKEN]') return 'contenteditable has: ' + $('ce').textContent;
     typeInto($('rich'), 'b ' + KEY());
     await settle(LIVE_WAIT);
     if (!live()) return 'no warning in the rich editor';
     liveButton('Redact').click();
-    await settle();
+    await idle();
     if (window.__richPastes !== 1) return 'the rich editor handled ' + window.__richPastes + ' pastes';
     return $('rich').textContent === 'b [REDACTED:GITHUB_TOKEN]' || 'rich editor has: ' + $('rich').textContent;
+  });
+  check('Redact on the typing warning REPLACES the text in a rich editor (it must not append a second copy)', async () => {
+    // The bug seen on a real ChatGPT box: the redacted copy was added after the original instead of replacing it.
+    const secret = KEY();
+    typeInto($('rich'), 'first line\nmy token is ' + secret + ' and some words after');
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning in the rich editor';
+    liveButton('Redact').click();
+    await idle();
+    const text = $('rich').textContent;
+    if (text.includes(secret)) return 'the original secret is still in the box: ' + text;
+    if ((text.match(/\[REDACTED:GITHUB_TOKEN\]/g) || []).length !== 1) return 'expected exactly one placeholder, got: ' + text;
+    if (!/first line/.test(text) || !/and some words after/.test(text)) return 'the surrounding text was lost: ' + text;
+    return !live() || 'the warning stayed';
+  });
+  check('Redact works on a multi-line message with several secrets in a rich editor', async () => {
+    const a = KEY();
+    const b = KEY2();
+    typeInto($('rich'), 'line one ' + a + '\nline two\n' + b + ' end');
+    await settle(LIVE_WAIT);
+    liveButton('Redact').click();
+    await idle();
+    const text = $('rich').textContent;
+    if (text.includes(a) || text.includes(b)) return 'a secret is still in the box: ' + text;
+    return (/\[REDACTED:GITHUB_TOKEN\]/.test(text) && /\[REDACTED:AWS_ACCESS_KEY_ID\]/.test(text)) || 'got: ' + text;
   });
   check('"Paste anyway" is respected: no typing warning for what they chose to keep', async () => {
     paste($('ta'), KEY());

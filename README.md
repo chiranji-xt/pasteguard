@@ -46,9 +46,9 @@ It also watches the message box as you type. If a secret shows up there (typed, 
 | | |
 | --- | --- |
 | Detection engine | 202 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
-| Content script | 44 checks in a real browser against a simulated page, including a rich editor that handles paste itself and the typing warning. |
+| Content script | 48 checks in a real browser against a simulated page, including a rich editor that handles paste itself and (like ProseMirror) is slow to notice a new selection, plus a randomized stress run of the Redact button (30 of 30 across 0, 100 and 250 ms of editor lag). |
 | Options page and popup | Exercised in a real browser: every control, every state. |
-| **Real chat sites** | **ChatGPT: paste and redact verified by hand** on a 16-case block of tricky made-up secrets (every one redacted, inserted once). Other sites, the typing warning and Firefox are not yet verified. Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
+| **Real chat sites** | **ChatGPT, verified by hand:** paste and redact on a 16-case block of tricky made-up secrets (every one redacted, inserted once); 15 lookalikes stayed silent; the typing banner appears without taking focus. Testing found one real bug there (the banner's Redact appended a second copy instead of replacing the text, because the editor learns about a new selection late), now fixed and covered by tests, **awaiting a retest on the real site**. Other sites and Firefox are not yet verified. Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
 | Firefox | Built and linted in CI, but needs real-world testing. |
 
 ## Install
@@ -134,7 +134,7 @@ The engine ([`src/engine`](src/engine)) is plain data and pure functions: rules 
 npm test            # 202 unit tests, no dependencies
 npm run build       # dist/chrome and dist/firefox
 npm run package     # also writes the store zips
-npm run harness     # a local page to try it, with "Run all checks" (44 browser checks)
+npm run harness     # a local page to try it, with "Run all checks" (48 browser checks)
 npm run audit -- <folder>   # scan real code for false positives
 ```
 

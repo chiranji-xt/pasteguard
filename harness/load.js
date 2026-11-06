@@ -27,20 +27,35 @@
   document.getElementById('file').addEventListener('change', (e) => note({ page: 'file-change', files: Array.from(e.target.files).map((f) => f.name) }));
 
   // A rich editor that takes over paste, as ProseMirror does.
+  //
+  // The important detail: like ProseMirror, it keeps its OWN record of the selection, which it only updates when the
+  // browser fires "selectionchange" (a moment after the selection actually changes). A paste is applied to that
+  // record, not to the browser's live selection. So code that selects everything and pastes in the same instant
+  // pastes at the OLD position. A real ChatGPT box did exactly this, which is how this was found.
   const rich = document.getElementById('rich');
   window.__richPastes = 0;
+  let editorSelection = null;
+  const syncSelection = () => {
+    const selection = getSelection();
+    if (selection.rangeCount && rich.contains(selection.anchorNode)) editorSelection = selection.getRangeAt(0).cloneRange();
+  };
+  // window.__pmDelay (milliseconds) makes the editor even slower to notice a new selection, for stress tests.
+  document.addEventListener('selectionchange', () => (window.__pmDelay ? setTimeout(syncSelection, window.__pmDelay) : syncSelection()));
+  rich.addEventListener('input', syncSelection);
+  rich.addEventListener('focus', () => setTimeout(syncSelection, 0));
   rich.addEventListener('paste', (e) => {
     e.preventDefault();
     window.__richPastes++;
     const text = e.clipboardData.getData('text/plain');
-    const selection = getSelection();
-    const range = selection.rangeCount ? selection.getRangeAt(0) : document.createRange();
+    const range = editorSelection && rich.contains(editorSelection.commonAncestorContainer) ? editorSelection : document.createRange();
     if (!rich.contains(range.commonAncestorContainer)) { range.selectNodeContents(rich); range.collapse(false); }
     range.deleteContents();
     const node = document.createTextNode(text);
     range.insertNode(node);
     range.setStartAfter(node);
     range.collapse(true);
+    editorSelection = range.cloneRange();
+    const selection = getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
   });

@@ -151,9 +151,10 @@
     return target.kind === 'field' ? target.el.value : target.el.innerText || target.el.textContent || '';
   }
 
-  /** Select everything in the box and put `text` in its place (used by the one-click "Redact" on the typing warning). */
-  function replaceAll(target, text) {
-    if (!target || !target.el || !target.el.isConnected) return false;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /** Select everything in the box. */
+  function selectAll(target) {
     try {
       target.el.focus({ preventScroll: true });
       if (target.kind === 'field') {
@@ -165,10 +166,66 @@
         selection.removeAllRanges();
         selection.addRange(range);
       }
+      return true;
     } catch (e) {
       return false;
     }
-    return insertText(target, snapshot(target), text);
+  }
+
+  /**
+   * Replace everything in the box with `text` (the one-click "Redact" on the typing warning). Resolves true only if
+   * `isClean(currentText)` says the secrets are really gone.
+   *
+   * Why this is careful: a rich editor (ProseMirror, as on ChatGPT) keeps its own record of the selection and only
+   * learns about a new one a moment later. Selecting everything and pasting in the same instant pastes at the OLD
+   * position, which appends a second copy and leaves the secret in place. So for a rich editor this waits for the
+   * editor to notice, empties the box with the browser's own delete (editors follow native edits from the DOM),
+   * inserts, and then checks the result, trying other ways if the secret is still there.
+   */
+  async function replaceAll(target, text, isClean) {
+    if (!target || !target.el || !target.el.isConnected) return false;
+    const done = () => !isClean || isClean(readText(target));
+
+    if (target.kind === 'field') {
+      if (!selectAll(target)) return false;
+      insertText(target, snapshot(target), text);
+      if (done()) return true;
+      selectAll(target);
+      setValueDirectly(target.el, text);
+      return done();
+    }
+
+    // 1. Empty the box natively, then insert into the empty box.
+    if (!selectAll(target)) return false;
+    await sleep(80);
+    try {
+      document.execCommand('delete');
+    } catch (e) {
+      /* try the next way */
+    }
+    await sleep(60);
+    if (!readText(target).trim() && target.el.isConnected) {
+      target.el.focus({ preventScroll: true });
+      insertText(target, snapshot(target), text);
+      await sleep(30);
+      if (done()) return true;
+    }
+    // 2. Select everything again, give the editor time to notice, and let it paste over the selection.
+    selectAll(target);
+    await sleep(120);
+    insertText(target, snapshot(target), text);
+    await sleep(30);
+    if (done()) return true;
+    // 3. The browser's own insert command over the selection.
+    selectAll(target);
+    await sleep(120);
+    try {
+      document.execCommand('insertText', false, text);
+    } catch (e) {
+      /* nothing left to try */
+    }
+    await sleep(30);
+    return done();
   }
 
   PG.insert = { own, findTarget, snapshot, restore, insertText, replaceAll, readText, isTextField, editableRoot };

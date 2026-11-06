@@ -98,13 +98,21 @@
       rect: target.el.getBoundingClientRect(),
       message: findings.length === 1 ? first.label + ' in your message' : findings.length + ' sensitive items in your message',
       detail: findings.length === 1 ? mask(first) : '',
-      onRedact() {
+      async onRedact() {
         const latest = insert.readText(target);
         const result = detect.scan(latest, options).findings;
         const redacted = detect.redact(latest, result);
+        const secrets = result.map((f) => f.value);
         stopLive();
-        if (insert.replaceAll(target, redacted.text)) stat('redacted');
-        else ui.toast('Paste Guard could not edit the message box. Try redacting by hand.', 'warn');
+        busy = true; // the box is edited in several steps: do not react to our own edits
+        let ok = false;
+        try {
+          ok = await insert.replaceAll(target, redacted.text, (now) => secrets.every((s) => !now.includes(s)));
+        } finally {
+          busy = false;
+        }
+        if (ok) stat('redacted');
+        else ui.toast('Paste Guard could not redact the message box automatically. Please remove the secret by hand.', 'warn');
       },
       onDismiss() {
         const set = acksFor(target.el);
@@ -300,5 +308,5 @@
   global.addEventListener('change', onChange, true);
   global.addEventListener('input', onInput, true);
 
-  PG.content = { handleText, onPaste, onDrop, onChange, onInput, state: () => ({ settings, allowlist }) };
+  PG.content = { handleText, onPaste, onDrop, onChange, onInput, state: () => ({ settings, allowlist, busy }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
