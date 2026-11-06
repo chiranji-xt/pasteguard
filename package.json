@@ -1,0 +1,19 @@
+{
+  "name": "pasteguard",
+  "version": "0.1.0",
+  "description": "A browser extension that stops API keys, passwords and personal data from being pasted into AI chat boxes. Checks happen locally.",
+  "private": true,
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.js",
+    "package": "node scripts/build.js --zip",
+    "icons": "node scripts/make-icons.js",
+    "harness": "node scripts/serve-harness.js",
+    "audit": "node scripts/audit.js"
+  }
+}
