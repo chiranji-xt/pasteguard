@@ -238,6 +238,24 @@
         V.shannonEntropy(value) >= 3.0,
     },
     {
+      id: 'url-query-secret',
+      label: 'Secret in a URL',
+      category: 'credential',
+      severity: 'medium',
+      priority: 45,
+      keywords: ['='],
+      // ?api_key=..., &token=...: a parameter whose whole name says it is a credential. Exact names only, so
+      // ?token_type=bearer and ?sort=name are left alone.
+      pattern: /[?&](?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token|token|secret|client[_-]?secret|password|passwd|pwd|signature|key)=([^&\s"'<>#]{8,400})/i,
+      group: 1,
+      validate(value, ctx) {
+        const name = ctx.match[0].slice(1, ctx.match[0].indexOf('=')).toLowerCase();
+        if (V.isPlaceholder(value) || V.looksLikeCodeReference(value) || V.isRepetitive(value) || looksLikeWords(value)) return false;
+        if (name === 'key') return value.length >= 16 && V.shannonEntropy(value) >= 3.5; // "?key=" is also an ordinary lookup parameter
+        return V.shannonEntropy(value) >= 3.0;
+      },
+    },
+    {
       id: 'cli-secret-flag',
       label: 'Secret on a command line',
       category: 'credential',

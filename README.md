@@ -45,10 +45,10 @@ It also watches the message box as you type. If a secret shows up there (typed, 
 
 | | |
 | --- | --- |
-| Detection engine | 200 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
+| Detection engine | 202 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
 | Content script | 44 checks in a real browser against a simulated page, including a rich editor that handles paste itself and the typing warning. |
 | Options page and popup | Exercised in a real browser: every control, every state. |
-| **Real chat sites** | **Not yet verified automatically.** Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
+| **Real chat sites** | **ChatGPT: paste and redact verified by hand** on a 16-case block of tricky made-up secrets (every one redacted, inserted once). Other sites, the typing warning and Firefox are not yet verified. Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
 | Firefox | Built and linted in CI, but needs real-world testing. |
 
 ## Install
@@ -74,7 +74,7 @@ Then open the extension's **Settings** and try the **Try it** box.
 | API keys | 36 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid and Twilio | yes |
 | Private keys | SSH, TLS, PGP | yes |
 | Tokens | JWTs, `Authorization: Bearer ...`, Basic auth | yes |
-| Passwords and secrets | `password = "..."`, database URLs with a password, `--token ...` on a command line | yes |
+| Passwords and secrets | `password = "..."`, database URLs with a password, `?api_key=...` in a URL, `--token ...` on a command line | yes |
 | Card and bank numbers | Cards (issuer + length + Luhn checksum), IBANs (mod-97) | yes |
 | Government IDs | US Social Security, Indian Aadhaar (Verhoeff checksum), PAN | yes |
 | Email addresses, phone numbers | | no (you paste these on purpose) |
@@ -131,7 +131,7 @@ The engine ([`src/engine`](src/engine)) is plain data and pure functions: rules 
 ## Develop
 
 ```sh
-npm test            # 200 unit tests, no dependencies
+npm test            # 202 unit tests, no dependencies
 npm run build       # dist/chrome and dist/firefox
 npm run package     # also writes the store zips
 npm run harness     # a local page to try it, with "Run all checks" (44 browser checks)

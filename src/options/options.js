@@ -57,7 +57,7 @@
     apiKey: 'OpenAI, Anthropic, Google, AWS, GitHub, Stripe, Slack and many more',
     privateKey: 'SSH, TLS and PGP private keys',
     token: 'JWTs, Bearer and Basic auth headers',
-    credential: 'password = "...", database URLs with passwords, secrets on command lines',
+    credential: 'password = "...", database URLs with passwords, ?api_key=... in URLs, secrets on command lines',
     financial: 'Card numbers (checked with the card checksum) and IBANs',
     government: 'US Social Security, Indian Aadhaar and PAN numbers',
     email: 'Off by default: you paste email addresses on purpose all the time',

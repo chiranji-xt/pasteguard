@@ -248,6 +248,25 @@ const fixtures = {
     positive: [() => 'SECRET_KEY=django-insecure-' + rand(40, 'b64url', 84), () => 'export API_TOKEN="' + rand(32, 'alnum', 85) + '"', () => 'client_secret: ' + rand(36, 'b64url', 86), () => '{"access_key": "' + rand(28, 'alnum', 87) + '"}'],
     negative: ['token: process.env.GITHUB_TOKEN', 'api_key = os.getenv("KEY")', 'TOKEN=<your-token>', 'secret: ${{ secrets.NPM_TOKEN }}', 'api_key: Optional[str] = None', 'token_type: "bearer"', 'secret_name: my-app-secret', 'max_tokens: 100000', 'API_KEY=your-api-key-here', 'api_key = config.api_key', 'secret = "x"', "token = (tokenize.NAME, 'Hello')", "expected_tokens = [tokenize.TokenInfo(3, 'x')]", 'token: https://example.com/oauth/token', "token_type = 'quoted-string'", "token_type = 'bare-quoted-string'", 'secret_name: production_database_credentials', 'key_path = "keys/service-account-prod.json"', 'description: "the secret token used for signing requests"'],
   },
+  'url-query-secret': {
+    positive: [
+      () => 'curl "https://api.example-service.io/v1/users?api_key=' + rand(32, 'alnum', 140) + '&format=json"',
+      () => 'https://hooks.myapp.dev/callback?user=42&token=' + rand(40, 'alnum', 141) + '&retry=3',
+      () => 'GET /data?access_token=' + rand(36, 'b64url', 142),
+      () => 'https://maps.example-geo.io/embed?key=' + rand(39, 'b64url', 143) + '&q=cafes',
+      () => 'https://portal.example-bank.io/login?user=ravi&password=' + rand(12, 'alnum', 144) + '%23',
+    ],
+    negative: [
+      'https://api.example.com/v1/users?token_type=bearer&page=2',
+      'https://example.org/search?sort=name&order=asc&key=value',
+      'https://example.org/data?api_key=YOUR_API_KEY&format=json',
+      'https://example.org/data?token=${TOKEN}',
+      'https://example.org/data?api_key=<your-key>',
+      'https://example.org/p?key=abc123',
+      'https://example.org/?secret=true',
+      'https://example.org/?token=bare-quoted-string-words',
+    ],
+  },
   'cli-secret-flag': {
     positive: [() => 'mytool --password=' + rand(14, 'alnum', 88) + '#1', () => 'mytool login --token ' + rand(30, 'alnum', 89), () => "mytool --api-key '" + rand(24, 'b64url', 90) + "'"],
     negative: ['mytool --password $PASS', 'mytool --token=<token>', 'mytool --password-file ./pw.txt', 'mytool --secret ${SECRET}'],
