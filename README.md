@@ -30,14 +30,23 @@ DATABASE_URL=postgres://app:[REDACTED:URL_CREDENTIALS]@db.internal:5432/app
 GITHUB_TOKEN=[REDACTED:GITHUB_TOKEN]
 ```
 
+It also watches the message box as you type. If a secret shows up there (typed, dictated or autofilled), a small banner appears next to the box with a one-click **Redact**. It never blocks or interrupts typing:
+
+```
+ ┌──────────────────────────────────────────────────────────┐
+ │ ! GitHub token in your message  ghp_…Ez (40 chars)       │
+ │                                  [ Redact ]  [ Dismiss ] │
+ └──────────────────────────────────────────────────────────┘
+```
+
 ## Status
 
 **Version 0.1.0.** The detection engine and the extension are complete and tested, but it is not in the Chrome Web Store or Firefox Add-ons yet, and it has not been tried on every real site. What has been verified, and what has not:
 
 | | |
 | --- | --- |
-| Detection engine | 189 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
-| Content script | 31 checks in a real browser against a simulated page, including a rich editor that handles paste itself. |
+| Detection engine | 200 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
+| Content script | 44 checks in a real browser against a simulated page, including a rich editor that handles paste itself and the typing warning. |
 | Options page and popup | Exercised in a real browser: every control, every state. |
 | **Real chat sites** | **Not yet verified automatically.** Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
 | Firefox | Built and linted in CI, but needs real-world testing. |
@@ -62,7 +71,7 @@ Then open the extension's **Settings** and try the **Try it** box.
 
 | Category | Examples | On by default |
 | --- | --- | --- |
-| API keys | 31 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid and Twilio | yes |
+| API keys | 36 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid and Twilio | yes |
 | Private keys | SSH, TLS, PGP | yes |
 | Tokens | JWTs, `Authorization: Bearer ...`, Basic auth | yes |
 | Passwords and secrets | `password = "..."`, database URLs with a password, `--token ...` on a command line | yes |
@@ -88,7 +97,7 @@ These are not promises to take on trust: `npm test` runs [`test/privacy.test.js`
 
 Be clear about the limits, so it is not mistaken for a guarantee:
 
-- It checks what you **paste, drop or attach**. It does not watch what you type by hand, dictate, or have autofilled.
+- It **blocks** what you paste, drop or attach. What you type by hand, dictate or have autofilled can only get a **warning** (a small banner with a one-click Redact), because holding back every keystroke would make the box unusable. A secret you choose to leave in a message you then send is yours to catch.
 - It cannot see text inside **images or PDFs**.
 - It reads at most the first 2 MB of a pasted text or file.
 - Detection is pattern-based, so a secret with no recognisable shape (a plain-English password with no label) can slip through, and rare lookalikes can be flagged by mistake. The ignore button and the sensitivity setting are there for the second case.
@@ -115,15 +124,17 @@ Be clear about the limits, so it is not mistaken for a guarantee:
         (each step is skipped if an earlier one worked, so nothing is inserted twice)
 ```
 
+While you type, a short delay after each change the message box is scanned the same way. If something is found, the banner above appears; it takes no focus, goes away when the box is cleared (for example after sending), and does not nag about a value you dismissed or chose to paste anyway.
+
 The engine ([`src/engine`](src/engine)) is plain data and pure functions: rules in `rules.js`, checksums in `validators.js`, scanning and redaction in `detect.js`.
 
 ## Develop
 
 ```sh
-npm test            # 189 unit tests, no dependencies
+npm test            # 200 unit tests, no dependencies
 npm run build       # dist/chrome and dist/firefox
 npm run package     # also writes the store zips
-npm run harness     # a local page to try it, with "Run all checks" (31 browser checks)
+npm run harness     # a local page to try it, with "Run all checks" (44 browser checks)
 npm run audit -- <folder>   # scan real code for false positives
 ```
 

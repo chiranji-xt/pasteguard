@@ -145,7 +145,33 @@
     return changed();
   }
 
-  PG.insert = { own, findTarget, snapshot, restore, insertText, isTextField, editableRoot };
+  /** The text currently in a box. */
+  function readText(target) {
+    if (!target || !target.el) return '';
+    return target.kind === 'field' ? target.el.value : target.el.innerText || target.el.textContent || '';
+  }
+
+  /** Select everything in the box and put `text` in its place (used by the one-click "Redact" on the typing warning). */
+  function replaceAll(target, text) {
+    if (!target || !target.el || !target.el.isConnected) return false;
+    try {
+      target.el.focus({ preventScroll: true });
+      if (target.kind === 'field') {
+        target.el.setSelectionRange(0, target.el.value.length);
+      } else {
+        const selection = global.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(target.el);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    } catch (e) {
+      return false;
+    }
+    return insertText(target, snapshot(target), text);
+  }
+
+  PG.insert = { own, findTarget, snapshot, restore, insertText, replaceAll, readText, isTextField, editableRoot };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = PG.insert;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

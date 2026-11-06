@@ -188,6 +188,26 @@ const fixtures = {
     positive: [() => 'dapi' + rand(32, 'hex', 57)],
     negative: ['dapi-short', 'dapi' + '0'.repeat(32)],
   },
+  'slack-app-token': {
+    positive: [() => 'xapp-' + '1-A' + rand(10, 'upper', 130) + '-' + rand(13, 'digits', 131) + '-' + rand(64, 'hex', 132)],
+    negative: ['xapp-short', 'xapp-1-A' + 'X'.repeat(10) + '-' + '1'.repeat(13) + '-' + 'a'.repeat(64)],
+  },
+  'supabase-token': {
+    positive: [() => 'sbp_' + rand(40, 'hex', 133), () => 'SUPABASE_ACCESS_TOKEN=' + 'sbp_' + rand(40, 'hex', 134)],
+    negative: ['sbp_short', 'sbp_' + '0'.repeat(40)],
+  },
+  'linear-api-key': {
+    positive: [() => 'lin_' + 'api_' + rand(40, 'alnum', 135)],
+    negative: ['lin_api_short', 'lin_api_' + 'x'.repeat(40)],
+  },
+  'notion-token': {
+    positive: [() => 'ntn_' + rand(46, 'alnum', 136), () => 'secret_' + rand(43, 'alnum', 137)],
+    negative: ['ntn_short', 'secret_' + 'x'.repeat(43), 'secret_keeper_of_the_realm_has_a_long_name_ok'],
+  },
+  'pinecone-key': {
+    positive: [() => 'pcsk_' + rand(70, 'b64url', 138).replace(/-/g, '_')],
+    negative: ['pcsk_short', 'pcsk_' + 'x'.repeat(60)],
+  },
   'square-token': {
     positive: [() => 'sq0atp-' + rand(22, 'b64url', 58)],
     negative: ['sq0atp-short', 'sq0atp-' + 'x'.repeat(22)],

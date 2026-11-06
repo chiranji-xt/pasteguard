@@ -122,6 +122,13 @@
     apiKey('shopify-token', 'Shopify access token', new RegExp(`${B}(shp(?:at|ca|pa|ss)_[a-f0-9]{32})${E}`), ['shp']),
     apiKey('digitalocean-token', 'DigitalOcean token', new RegExp(`${B}(do[opr]_v1_[a-f0-9]{64})${E}`), ['_v1_']),
     apiKey('databricks-token', 'Databricks token', new RegExp(`${B}(dapi[a-f0-9]{32})${E}`), ['dapi']),
+    apiKey('slack-app-token', 'Slack app token', new RegExp(`${B}(xapp-\\d-[A-Z0-9]{8,}-\\d{8,}-[a-f0-9]{32,})${E}`), ['xapp-']),
+    apiKey('supabase-token', 'Supabase access token', new RegExp(`${B}(sbp_[a-f0-9]{40})${E}`), ['sbp_']),
+    apiKey('linear-api-key', 'Linear API key', new RegExp(`${B}(lin_api_[A-Za-z0-9]{40})${E}`), ['lin_api_']),
+    apiKey('notion-token', 'Notion integration token', new RegExp(`${B}((?:ntn_[A-Za-z0-9]{40,}|secret_[A-Za-z0-9]{43}))${E}`), ['ntn_', 'secret_'], {
+      validate: (value) => notPlaceholderKey(value) && V.shannonEntropy(value.replace(/^(?:ntn_|secret_)/, '')) >= 3.8,
+    }),
+    apiKey('pinecone-key', 'Pinecone API key', new RegExp(`${B}(pcsk_[A-Za-z0-9_]{50,})${E}`), ['pcsk_']),
     apiKey('square-token', 'Square access token', new RegExp(`${B}(sq0atp-[A-Za-z0-9_-]{22})${E}`), ['sq0atp-']),
     apiKey('mailgun-key', 'Mailgun API key', new RegExp(`${B}(key-[0-9a-f]{32})${E}`), ['key-'], { severity: 'medium', priority: 80 }),
     apiKey('twilio-api-key', 'Twilio API key SID', new RegExp(`${B}(SK[0-9a-f]{32})${E}`), ['sk'], { severity: 'medium', priority: 80 }),

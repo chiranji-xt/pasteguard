@@ -42,6 +42,13 @@ test('normalize never throws and always returns valid settings', () => {
   }
 });
 
+test('the typing warning is on by default and can be switched off', () => {
+  assert.equal(S.defaults().liveCheck, true);
+  assert.equal(S.normalize({ liveCheck: false }).liveCheck, false);
+  assert.equal(S.normalize({ liveCheck: 'no' }).liveCheck, true, 'a non-boolean is ignored');
+  assert.equal(S.normalize({}).liveCheck, true);
+});
+
 test('normalize keeps good values and drops bad ones', () => {
   const n = S.normalize({
     enabled: false,

@@ -1,6 +1,6 @@
 # Testing on the real sites
 
-The automated tests cover the engine (189 tests) and the content script against a simulated page, including a rich editor that handles paste itself. What they cannot cover is each real site's own editor, which changes without notice. Before a release, and whenever a site seems to misbehave, run this checklist on the real sites.
+The automated tests cover the engine (200 tests) and the content script against a simulated page, including a rich editor that handles paste itself. What they cannot cover is each real site's own editor, which changes without notice. Before a release, and whenever a site seems to misbehave, run this checklist on the real sites.
 
 ## Set up
 
@@ -30,6 +30,10 @@ Do these in the site's normal message box. Tick them off in the release notes.
 | 11 | Attach a normal image | Attaches immediately, with no delay and no dialog. |
 | 12 | Drag the example text into the box | The dialog appears. |
 | 13 | Open the toolbar popup | Says "Protecting <site>". **Pause** then paste the example: it pastes straight through. |
+| 14 | Resume, then **type** a made-up key by hand in the box (copy one from the example block and type it, or pause, paste it, resume, and add a letter) | After a moment a small banner appears next to the box naming it. Your typing is not interrupted and focus stays in the box. |
+| 15 | Press **Redact** on that banner | The secret is replaced by a `[REDACTED:...]` label, the rest of your text is intact, and the banner goes away. |
+| 16 | Type a secret again, then send the message (Enter) | The banner disappears once the box clears. |
+| 17 | Paste the example, choose **Paste anyway**, then keep typing | No banner for the value you chose to keep. |
 
 If a step fails, note the site, browser and version, and which step. Do **not** paste a real secret into a bug report; the example block reproduces it.
 
@@ -39,4 +43,4 @@ Steps 3, 4, 9 and 10 are the likeliest to differ: Firefox handles events created
 
 ## The simulated page
 
-`npm run harness` serves a page that loads the real scripts. Press **Run all checks** to run 31 checks in about a second. Run this first; if it fails, nothing on a real site will work.
+`npm run harness` serves a page that loads the real scripts. Press **Run all checks** to run 44 checks in about half a minute (the typing checks wait for the short delay). Run this first; if it fails, nothing on a real site will work.

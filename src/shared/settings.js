@@ -31,6 +31,7 @@
       mode: 'balanced', // quiet = only the clearest secrets, balanced = default, strict = also lower-confidence finds
       action: 'ask', // ask = show the dialog, redact = clean the paste without asking, block = refuse it
       scanFiles: true,
+      liveCheck: true, // also warn (without blocking) when a secret shows up in the message box as you type
       categories: defaultCategories(),
       pausedHosts: [],
       customPatterns: [],
@@ -45,6 +46,7 @@
     if (MODES.includes(raw.mode)) out.mode = raw.mode;
     if (ACTIONS.includes(raw.action)) out.action = raw.action;
     if (typeof raw.scanFiles === 'boolean') out.scanFiles = raw.scanFiles;
+    if (typeof raw.liveCheck === 'boolean') out.liveCheck = raw.liveCheck;
     if (raw.categories && typeof raw.categories === 'object') {
       for (const name of Object.keys(out.categories)) {
         if (typeof raw.categories[name] === 'boolean') out.categories[name] = raw.categories[name];

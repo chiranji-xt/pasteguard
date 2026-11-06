@@ -303,6 +303,137 @@
     return $('ta').value === 'token [REDACTED:GITHUB_TOKEN]' || 'value: ' + $('ta').value;
   });
 
+  // --- the typing warning (non-blocking) -----------------------------------------------------------------
+  const live = () => shadow() && shadow().querySelector('.live');
+  const liveButton = (label) => live() && [...live().querySelectorAll('button')].find((b) => b.textContent === label);
+  function typeInto(el, text, extra) {
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') el.value = text;
+    else el.textContent = text;
+    el.focus();
+    el.dispatchEvent(new InputEvent('input', Object.assign({ bubbles: true, composed: true, inputType: 'insertText', data: text.slice(-1) }, extra)));
+  }
+  const LIVE_WAIT = 750;
+
+  check('typing a secret shows a warning, without taking focus or blocking', async () => {
+    const k = KEY();
+    typeInto($('ta'), 'my key is ' + k + ' thanks');
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning appeared';
+    if (dialog()) return 'a blocking dialog appeared for typing';
+    const text = live().textContent;
+    if (text.includes(k)) return 'the warning shows the full secret';
+    if (!/GitHub token in your message/.test(text) || !/ghp_…/.test(text)) return 'warning text: ' + text;
+    if (document.activeElement !== $('ta')) return 'focus moved away from the box';
+    const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    live().dispatchEvent(down);
+    if (!down.defaultPrevented) return 'clicking the warning would take focus from the box';
+    const r = live().getBoundingClientRect();
+    if (r.left < 0 || r.top < 0 || r.right > window.innerWidth || r.bottom > window.innerHeight) return 'the warning is off screen';
+  });
+  check('Redact on the warning replaces the secret and keeps the rest', async () => {
+    typeInto($('ta'), 'my key is ' + KEY() + ' thanks');
+    await settle(LIVE_WAIT);
+    liveButton('Redact').click();
+    await settle();
+    if ($('ta').value !== 'my key is [REDACTED:GITHUB_TOKEN] thanks') return 'got: ' + $('ta').value;
+    return !live() || 'the warning stayed after redacting';
+  });
+  check('Dismiss hides it, and the same value does not come back, but a new secret does', async () => {
+    const k = KEY();
+    typeInto($('ta'), 'token ' + k);
+    await settle(LIVE_WAIT);
+    liveButton('Dismiss').click();
+    await settle();
+    if (live()) return 'still showing after Dismiss';
+    typeInto($('ta'), 'token ' + k + ' and some more words');
+    await settle(LIVE_WAIT);
+    if (live()) return 'the same value was flagged again';
+    typeInto($('ta'), 'token ' + k + ' ' + KEY2());
+    await settle(LIVE_WAIT);
+    return !!live() || 'a different secret was not flagged';
+  });
+  check('ordinary typing, including the word "token", never shows a warning', async () => {
+    typeInto($('ta'), 'Can you explain how a token bucket rate limiter works? password: string, api_key = os.getenv("KEY")');
+    await settle(LIVE_WAIT);
+    return !live() || 'a warning appeared for ordinary text';
+  });
+  check('two secrets: the warning counts them', async () => {
+    typeInto($('ta'), KEY() + ' ' + KEY2());
+    await settle(LIVE_WAIT);
+    return (live() && /2 sensitive items in your message/.test(live().textContent)) || 'text: ' + (live() && live().textContent);
+  });
+  check('works in a contenteditable box and in a rich editor that handles paste itself', async () => {
+    typeInto($('ce'), 'a ' + KEY());
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning in the contenteditable';
+    liveButton('Redact').click();
+    await settle();
+    if ($('ce').textContent !== 'a [REDACTED:GITHUB_TOKEN]') return 'contenteditable has: ' + $('ce').textContent;
+    typeInto($('rich'), 'b ' + KEY());
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning in the rich editor';
+    liveButton('Redact').click();
+    await settle();
+    if (window.__richPastes !== 1) return 'the rich editor handled ' + window.__richPastes + ' pastes';
+    return $('rich').textContent === 'b [REDACTED:GITHUB_TOKEN]' || 'rich editor has: ' + $('rich').textContent;
+  });
+  check('"Paste anyway" is respected: no typing warning for what they chose to keep', async () => {
+    paste($('ta'), KEY());
+    button('Paste anyway').click();
+    await settle(LIVE_WAIT);
+    return !live() || 'the typing warning flagged a paste the person approved';
+  });
+  check('the warning goes away when the box is cleared (a sent message clears it silently)', async () => {
+    typeInto($('ta'), KEY());
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning';
+    $('ta').value = ''; // no input event, like a chat site clearing the box after sending
+    await settle(1400);
+    return !live() || 'the warning stayed after the box was cleared';
+  });
+  check('the recheck timer does not re-show the warning or inflate the counter', async () => {
+    typeInto($('ta'), KEY());
+    await settle(LIVE_WAIT + 2300); // two or three recheck cycles
+    const s = await store.getStats();
+    return (s.warned === 1 && shadow().querySelectorAll('.live').length === 1) || 'warned: ' + s.warned + ', banners: ' + shadow().querySelectorAll('.live').length;
+  });
+  check('password fields and IME composition are never checked', async () => {
+    const pw = document.createElement('input');
+    pw.type = 'password';
+    document.body.append(pw);
+    typeInto(pw, KEY());
+    await settle(LIVE_WAIT);
+    pw.remove();
+    if (live()) return 'a password field was checked';
+    typeInto($('ta'), KEY(), { isComposing: true });
+    await settle(LIVE_WAIT);
+    return !live() || 'a composition event was checked';
+  });
+  check('switching the typing warning off, or pausing the site, silences it', async () => {
+    await withSettings({ liveCheck: false });
+    typeInto($('ta'), KEY());
+    await settle(LIVE_WAIT);
+    if (live()) return 'warned while switched off';
+    await withSettings({ pausedHosts: [location.hostname] });
+    typeInto($('ta'), KEY());
+    await settle(LIVE_WAIT);
+    return !live() || 'warned while paused';
+  });
+  check('turning it off while a warning is showing removes the warning', async () => {
+    typeInto($('ta'), KEY());
+    await settle(LIVE_WAIT);
+    if (!live()) return 'no warning to begin with';
+    await withSettings({ liveCheck: false });
+    await settle(100);
+    return !live() || 'the warning stayed after switching off';
+  });
+  check('the typing warning follows the sensitivity setting (quiet ignores medium finds)', async () => {
+    await withSettings({ mode: 'quiet' });
+    typeInto($('ta'), 'Authorization: Bearer ' + rnd(40));
+    await settle(LIVE_WAIT);
+    return !live() || 'quiet mode warned about a medium-severity find';
+  });
+
   // --- privacy ---------------------------------------------------------------------------------------
   check('counters count events, and nothing secret is ever stored', async () => {
     paste($('ta'), KEY());

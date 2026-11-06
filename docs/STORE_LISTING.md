@@ -32,6 +32,9 @@ WHAT IT CATCHES
 REDACT, DON'T JUST BLOCK
 "Redact and paste" replaces each secret with a label such as [REDACTED:OPENAI_API_KEY], so you can still ask your question and the AI still understands what was there.
 
+WARNS WHILE YOU TYPE, TOO
+If a secret ends up in the message box without a paste (typed, dictated or autofilled), a small banner appears with a one-click Redact. It never blocks or interrupts your typing.
+
 QUIET WHEN IT SHOULD BE
 Ordinary text is never touched. Example values, placeholders like <your-token> or ${API_KEY}, and test card numbers from payment docs are ignored. You can tell it to ignore any value it flags by mistake.
 
@@ -45,7 +48,7 @@ WORKS WITH
 ChatGPT, Claude, Gemini, Google AI Studio, Microsoft Copilot, Perplexity, Grok, DeepSeek, Mistral Le Chat, Poe, Hugging Chat, Meta AI, Qwen Chat, T3 Chat, OpenRouter, OpenAI Platform and Anthropic Console.
 
 LIMITS
-Paste Guard checks what you paste, drop or attach. It does not watch what you type by hand, and it cannot read text inside images or PDFs. It is a safety net, not a guarantee.
+Paste Guard blocks what you paste, drop or attach. Text you type by hand can only get a warning (a small banner with a one-click Redact), and it cannot read text inside images or PDFs. It is a safety net, not a guarantee.
 
 ## Single purpose (Chrome Web Store asks for this)
 
@@ -53,7 +56,7 @@ Detect and redact secrets and personal data in text before it is pasted into AI 
 
 ## Permission justifications (Chrome Web Store asks for each)
 
-- **Content script on the listed sites:** Reads the text of paste, drop and file-attach events on the listed AI chat sites so it can be checked for secrets before the site receives it. All processing is local; nothing is transmitted.
+- **Content script on the listed sites:** Reads the text of paste, drop and file-attach events, and (unless switched off) the text in the message box as the user types, on the listed AI chat sites so it can be checked for secrets. All processing is local; nothing is transmitted.
 - **storage:** Saves the user's settings, the list of values they chose to ignore (as one-way hashes), and five usage counters. No pasted content is stored.
 - **activeTab:** Lets the toolbar popup show whether the current tab is a protected site, only when the user opens the popup.
 

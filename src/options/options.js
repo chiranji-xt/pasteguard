@@ -41,6 +41,7 @@
   function renderBasics() {
     $('enabled').checked = settings.enabled;
     $('scanFiles').checked = settings.scanFiles;
+    $('liveCheck').checked = settings.liveCheck;
     for (const radio of document.querySelectorAll('input[name="mode"]')) radio.checked = radio.value === settings.mode;
     for (const radio of document.querySelectorAll('input[name="action"]')) radio.checked = radio.value === settings.action;
     for (const box of document.querySelectorAll('#categories input')) box.checked = !!settings.categories[box.dataset.category];
@@ -48,6 +49,7 @@
 
   $('enabled').addEventListener('change', (e) => save({ enabled: e.target.checked }));
   $('scanFiles').addEventListener('change', (e) => save({ scanFiles: e.target.checked }));
+  $('liveCheck').addEventListener('change', (e) => save({ liveCheck: e.target.checked }));
   for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', () => radio.checked && save({ mode: radio.value }));
   for (const radio of document.querySelectorAll('input[name="action"]')) radio.addEventListener('change', () => radio.checked && save({ action: radio.value }));
 

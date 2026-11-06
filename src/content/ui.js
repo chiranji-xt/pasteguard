@@ -57,6 +57,18 @@
       background: #0f172a; color: #fff; font: 13.5px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
     .toast.warn { background: #92400e; }
+    .live {
+      position: fixed; z-index: 2147483646; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; width: min(440px, calc(100vw - 16px));
+      padding: 9px 12px; border-radius: 12px; background: #ffffff; color: #0f172a; border: 1px solid #fbbf24;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); font: 13.5px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .live .badge { width: 22px; height: 22px; border-radius: 7px; font-size: 13px; background: #d97706; }
+    .live .text { flex: 1; min-width: 150px; }
+    .live code { white-space: nowrap; }
+    .live button { padding: 4px 10px; font-size: 12.5px; }
+    @media (prefers-color-scheme: dark) {
+      .live { background: #111827; color: #e2e8f0; border-color: #92400e; }
+    }
     @media (prefers-color-scheme: dark) {
       .backdrop { color: #e2e8f0; }
       .dialog { background: #111827; border-color: #1f2937; }
@@ -273,7 +285,50 @@
     toastTimer = setTimeout(() => node.remove(), 4500);
   }
 
-  PG.ui = { confirmPaste, confirmFile, toast, isOpen: () => open, plural };
+  let liveOwner = null;
+
+  /**
+   * A small, non-blocking warning near the message box: "This message contains an API key. [Redact] [Dismiss]".
+   * It never takes focus or stops typing. `rect` is where the box is on screen.
+   */
+  function showLive({ owner, rect, message, detail, onRedact, onDismiss }) {
+    const root = ensureHost();
+    hideLive();
+    liveOwner = owner;
+    const redactButton = h('button', { class: 'primary', type: 'button', text: 'Redact' });
+    const dismissButton = h('button', { type: 'button', text: 'Dismiss' });
+    const node = h(
+      'div',
+      { class: 'live', role: 'status', 'aria-live': 'polite' },
+      h('span', { class: 'badge', 'aria-hidden': 'true', text: '!' }),
+      h('span', { class: 'text' }, h('strong', { text: message }), document.createTextNode(' '), detail ? h('code', { text: detail }) : null),
+      redactButton,
+      dismissButton
+    );
+    // Clicking the banner must not pull focus out of the box the person is typing in.
+    node.addEventListener('mousedown', (e) => e.preventDefault());
+    redactButton.addEventListener('click', () => onRedact());
+    dismissButton.addEventListener('click', () => onDismiss());
+    root.append(node);
+
+    // Above the box if it fits, else below, else pinned inside the window. Measured, because a narrow window wraps the text.
+    const width = Math.min(440, window.innerWidth - 16);
+    const height = node.offsetHeight;
+    let top = rect.top - 8 - height;
+    if (top < 8) top = rect.bottom + 8;
+    if (top + height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - height - 8);
+    node.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + 'px';
+    node.style.top = top + 'px';
+  }
+
+  /** Remove the typing warning. If `owner` is given, only when it belongs to that box. */
+  function hideLive(owner) {
+    if (owner && liveOwner !== owner) return;
+    liveOwner = null;
+    if (shadow) shadow.querySelectorAll('.live').forEach((n) => n.remove());
+  }
+
+  PG.ui = { confirmPaste, confirmFile, toast, showLive, hideLive, liveOwner: () => liveOwner, isOpen: () => open, plural };
   // Test hook. Only the local test harness (where nothing is isolated) can set this flag: a content script
   // runs in its own JavaScript world, so a web page can never reach it and the shadow root stays closed.
   if (global.__PG_TEST__) PG.ui.__shadow = () => shadow;

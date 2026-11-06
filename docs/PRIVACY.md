@@ -6,7 +6,7 @@ _Last updated: 2026-11-06_
 
 ## What Paste Guard reads
 
-When you paste, drop or attach something on one of the supported chat sites, Paste Guard reads that text (or the start of that file) in your browser, to check it for secrets and personal data. The check runs entirely on your device, inside the page, in the extension's own code.
+When you paste, drop or attach something on one of the supported chat sites, Paste Guard reads that text (or the start of that file) in your browser, to check it for secrets and personal data. With **Also warn while I type** on (it is on by default; you can switch it off in Settings), it also reads the text currently in the message box a moment after you change it, to show a warning if a secret appears there. It does not read other text on the page, and it ignores password fields. The check runs entirely on your device, inside the page, in the extension's own code.
 
 ## What leaves your device
 

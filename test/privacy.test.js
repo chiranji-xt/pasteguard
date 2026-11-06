@@ -91,7 +91,9 @@ test('the manifest asks for the minimum', () => {
 test('the content scripts only touch the clipboard data they are handed by paste and drop events', () => {
   const text = code('content/content.js') + code('content/insert.js');
   assert.ok(/clipboardData/.test(text) && /dataTransfer/.test(text));
-  assert.ok(!/readText|writeText|execCommand\(\s*['"]copy|execCommand\(\s*['"]cut/.test(text), 'never reads or writes the clipboard on its own');
+  // navigator.clipboard is banned outright by the first test. These cover the other ways to touch the clipboard.
+  assert.ok(!/execCommand\(\s*['"](?:copy|cut)['"]/.test(text), 'never copies or cuts on its own');
+  assert.ok(!/addEventListener\(\s*['"](?:copy|cut)['"]/.test(text), 'never listens for copy or cut');
 });
 
 test('what the dialog displays is masked, never the full value', () => {

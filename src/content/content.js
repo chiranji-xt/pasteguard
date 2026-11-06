@@ -23,7 +23,10 @@
     store.getSettings().then((s) => (settings = s));
     store.getAllowlist().then((list) => (allowlist = new Set(list.map((e) => e.hash))));
     store.onSettingsChange((s, hashes) => {
-      if (s) settings = s;
+      if (s) {
+        settings = s;
+        if (!settings.liveCheck || !active()) stopLive();
+      }
       if (hashes) allowlist = new Set(hashes);
     });
   }
@@ -43,6 +46,84 @@
   async function rememberIgnored(findings) {
     if (!findings.length || !store) return;
     await store.addToAllowlist(findings.map((f) => detect.hashValue(f.value)));
+  }
+
+  // --- typing: a warning that never blocks ---------------------------------------------------------
+  // Covers what paste cannot: text typed by hand, dictated, autofilled, or typed while Paste Guard was paused.
+
+  const LIVE_DELAY_MS = 500;
+  const LIVE_MAX_CHARS = 200000;
+  const acknowledged = new WeakMap(); // box -> hashes of values the person already chose to keep in it
+  const liveTimers = new WeakMap();
+  let livePoll = null;
+  let liveTarget = null;
+  let liveSignature = null; // what the banner is currently warning about, so a recheck does not re-show or recount it
+
+  const acksFor = (el) => {
+    let set = acknowledged.get(el);
+    if (!set) acknowledged.set(el, (set = new Set()));
+    return set;
+  };
+
+  function stopLive() {
+    clearInterval(livePoll);
+    livePoll = null;
+    if (liveTarget) ui.hideLive(liveTarget.el);
+    liveTarget = null;
+    liveSignature = null;
+  }
+
+  function liveScan(target) {
+    if (!settings.liveCheck || !active() || busy || !target.el.isConnected) {
+      if (liveTarget && liveTarget.el === target.el) stopLive();
+      return;
+    }
+    const text = insert.readText(target);
+    const options = scanOptions();
+    options.allowlist = new Set([...allowlist, ...acksFor(target.el)]);
+    const { findings } = text && text.length <= LIVE_MAX_CHARS ? detect.scan(text, options) : { findings: [] };
+    if (!findings.length) {
+      if (liveTarget && liveTarget.el === target.el) stopLive();
+      return;
+    }
+
+    const signature = findings.map((f) => f.ruleId + ':' + f.start + ':' + f.value.length).join('|');
+    if (liveTarget && liveTarget.el === target.el && liveSignature === signature && ui.liveOwner() === target.el) return; // unchanged
+    liveSignature = signature;
+
+    const first = findings[0];
+    liveTarget = target;
+    ui.showLive({
+      owner: target.el,
+      rect: target.el.getBoundingClientRect(),
+      message: findings.length === 1 ? first.label + ' in your message' : findings.length + ' sensitive items in your message',
+      detail: findings.length === 1 ? mask(first) : '',
+      onRedact() {
+        const latest = insert.readText(target);
+        const result = detect.scan(latest, options).findings;
+        const redacted = detect.redact(latest, result);
+        stopLive();
+        if (insert.replaceAll(target, redacted.text)) stat('redacted');
+        else ui.toast('Paste Guard could not edit the message box. Try redacting by hand.', 'warn');
+      },
+      onDismiss() {
+        const set = acksFor(target.el);
+        for (const f of findings) set.add(detect.hashValue(f.value));
+        stopLive();
+      },
+    });
+    stat('warned');
+    // Sending a message clears the box without an input event, so look again now and then while the warning is up.
+    clearInterval(livePoll);
+    livePoll = setInterval(() => liveScan(target), 1000);
+  }
+
+  function onInput(event) {
+    if (!settings.liveCheck || !active() || busy || event.isComposing) return;
+    const target = insert.findTarget(event);
+    if (!target || (target.kind === 'field' && target.el.type === 'password')) return;
+    clearTimeout(liveTimers.get(target.el));
+    liveTimers.set(target.el, setTimeout(() => liveScan(target), LIVE_DELAY_MS));
   }
 
   // --- text: paste and drop ----------------------------------------------------------------------
@@ -85,6 +166,8 @@
       put(redacted.text);
       stat('redacted');
     } else if (answer.choice === 'original') {
+      // They chose to keep it, so the typing warning must not immediately flag the same values again.
+      if (target) for (const f of findings) acksFor(target.el).add(detect.hashValue(f.value));
       put(text);
       stat('pastedAnyway');
     } else {
@@ -215,6 +298,7 @@
   global.addEventListener('paste', onPaste, true);
   global.addEventListener('drop', onDrop, true);
   global.addEventListener('change', onChange, true);
+  global.addEventListener('input', onInput, true);
 
-  PG.content = { handleText, onPaste, onDrop, onChange, state: () => ({ settings, allowlist }) };
+  PG.content = { handleText, onPaste, onDrop, onChange, onInput, state: () => ({ settings, allowlist }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
