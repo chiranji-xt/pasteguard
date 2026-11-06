@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paste Guard settings</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="options.css">
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <span class="badge" aria-hidden="true">!</span>
+    <div>
+      <h1>Paste Guard</h1>
+      <p class="muted">Stops API keys, passwords and personal data from going into AI chats. Everything is checked on your device. <span id="version"></span></p>
+    </div>
+    <p id="saved" class="saved" role="status" aria-live="polite"></p>
+  </header>
+
+  <section class="card">
+    <label class="row switch">
+      <input id="enabled" type="checkbox">
+      <span><strong>Paste Guard is on</strong><span class="muted block">Turn it off to stop checking everywhere.</span></span>
+    </label>
+  </section>
+
+  <section class="card">
+    <h2>How careful should it be?</h2>
+    <fieldset>
+      <legend class="visually-hidden">Sensitivity</legend>
+      <label class="choice"><input type="radio" name="mode" value="quiet"><span><strong>Quiet</strong><span class="muted block">Only the clearest secrets: provider API keys, private keys, card numbers.</span></span></label>
+      <label class="choice"><input type="radio" name="mode" value="balanced"><span><strong>Balanced</strong> <em class="tag">recommended</em><span class="muted block">Also tokens, passwords in code and URLs, and personal IDs.</span></span></label>
+      <label class="choice"><input type="radio" name="mode" value="strict"><span><strong>Strict</strong><span class="muted block">Adds lower-confidence finds. More warnings, some of them false alarms.</span></span></label>
+    </fieldset>
+  </section>
+
+  <section class="card">
+    <h2>When it finds something</h2>
+    <fieldset>
+      <legend class="visually-hidden">Action</legend>
+      <label class="choice"><input type="radio" name="action" value="ask"><span><strong>Ask me</strong> <em class="tag">recommended</em><span class="muted block">Hold the paste and show what was found. You choose: redact, paste anyway, or cancel.</span></span></label>
+      <label class="choice"><input type="radio" name="action" value="redact"><span><strong>Redact automatically</strong><span class="muted block">Paste a cleaned version straight away, with a short notice. No dialog.</span></span></label>
+      <label class="choice"><input type="radio" name="action" value="block"><span><strong>Block the paste</strong><span class="muted block">Refuse it and say why.</span></span></label>
+    </fieldset>
+  </section>
+
+  <section class="card">
+    <h2>What to look for</h2>
+    <div id="categories" class="categories"></div>
+    <label class="choice files"><input id="scanFiles" type="checkbox"><span><strong>Check attached files</strong><span class="muted block">Files like <code>.env</code> or key files are read on your device before they are attached. Images and videos are never touched.</span></span></label>
+  </section>
+
+  <section class="card">
+    <h2>Your own patterns</h2>
+    <p class="muted">Add things only you know to protect: a project codename, an internal hostname, a customer ID format. Written as a regular expression.</p>
+    <ul id="custom-list" class="list"></ul>
+    <form id="custom-form" class="custom-form" autocomplete="off">
+      <label>Name<input id="custom-name" type="text" maxlength="60" placeholder="Project codename"></label>
+      <label>Pattern<input id="custom-pattern" type="text" maxlength="500" placeholder="PROJECT-[A-Z]{4}-\d{3}" spellcheck="false"></label>
+      <label class="inline"><input id="custom-i" type="checkbox"> Ignore upper/lower case</label>
+      <button class="primary" type="submit">Add pattern</button>
+      <p id="custom-error" class="error" role="alert"></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Try it</h2>
+    <p class="muted">Paste or type something to see what Paste Guard would do with your current settings. Nothing here leaves this page.</p>
+    <textarea id="try-input" rows="5" class="mono" spellcheck="false" placeholder="Paste text here, or press the button for a made-up example"></textarea>
+    <div class="row-buttons"><button id="try-sample" type="button">Fill with an example</button><button id="try-clear" type="button">Clear</button></div>
+    <div id="try-out" class="try-out" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sites where it is paused</h2>
+    <ul id="paused-list" class="list"></ul>
+    <p id="paused-empty" class="muted">Paused nowhere. Use the toolbar icon on a site to pause it there.</p>
+  </section>
+
+  <section class="card">
+    <h2>Values you chose to ignore</h2>
+    <p class="muted"><span id="allow-count">0</span> values. Only a one-way fingerprint of each is stored, never the value itself.</p>
+    <button id="allow-clear" type="button" class="danger">Forget all ignored values</button>
+  </section>
+
+  <section class="card">
+    <h2>Where it runs</h2>
+    <p class="muted">Paste Guard only runs on these sites, and asks for no access to anything else.</p>
+    <ul id="sites" class="sites"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Counters</h2>
+    <p id="stats" class="muted"></p>
+    <button id="stats-reset" type="button">Reset counters</button>
+    <p class="muted small">Counters are numbers only. What you paste is never stored, logged or sent anywhere.</p>
+  </section>
+
+  <section class="card">
+    <h2>Back up or move your settings</h2>
+    <div class="row-buttons">
+      <button id="export" type="button">Export settings</button>
+      <label class="button">Import settings<input id="import" type="file" accept="application/json,.json" class="visually-hidden"></label>
+      <button id="reset" type="button" class="danger">Reset to defaults</button>
+    </div>
+    <p id="backup-message" class="muted" role="status" aria-live="polite"></p>
+  </section>
+</div>
+
+<script src="../engine/validators.js"></script>
+<script src="../engine/hash.js"></script>
+<script src="../engine/rules.js"></script>
+<script src="../engine/detect.js"></script>
+<script src="../shared/sites.js"></script>
+<script src="../shared/settings.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

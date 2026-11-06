@@ -28,6 +28,10 @@ function createServer() {
         res.writeHead(404).end('not found');
         return;
       }
+      // The popup and options pages expect the extension APIs: give them the stand-in before their own scripts run.
+      if (/^\/src\/(?:popup\/popup|options\/options)\.html$/.test(pathname)) {
+        data = Buffer.from(data.toString('utf8').replace('<head>', '<head>\n<script src="/harness/chrome-shim.js"></script>'));
+      }
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
       res.end(data);
     });

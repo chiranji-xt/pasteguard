@@ -1,0 +1,17 @@
+body { width: 300px; }
+main { padding: 14px 16px 12px; display: grid; gap: 12px; }
+header { display: flex; align-items: center; gap: 9px; }
+h1 { font-size: 16px; font-weight: 650; }
+.status { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 10px 12px; }
+.status p { margin: 0; }
+.status-line { font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.status-line::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.status-line.on::before { background: var(--ok); }
+.status-line.paused::before { background: #d97706; }
+#status-detail { margin-top: 3px; font-size: 12.5px; }
+.actions button { width: 100%; }
+.switch { display: flex; align-items: center; gap: 9px; cursor: pointer; font-weight: 600; }
+.switch input { width: 17px; height: 17px; accent-color: var(--brand); }
+.stats { margin: 0; font-size: 12.5px; }
+footer { display: flex; align-items: center; justify-content: space-between; padding-top: 2px; }
+footer a { font-size: 12.5px; }

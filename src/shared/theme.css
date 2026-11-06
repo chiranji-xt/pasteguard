@@ -1,0 +1,62 @@
+/* Shared look for the popup and the options page. Colours follow the system light or dark setting. */
+:root {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --brand: #4f46e5;
+  --brand-ink: #ffffff;
+  --danger: #b91c1c;
+  --ok: #15803d;
+  --code: #f1f5f9;
+  --mark: #fde68a;
+  --mark-ink: #422006;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1020;
+    --panel: #111827;
+    --ink: #e5e7eb;
+    --muted: #94a3b8;
+    --line: #1f2937;
+    --brand: #818cf8;
+    --brand-ink: #0b1020;
+    --danger: #f87171;
+    --ok: #4ade80;
+    --code: #0b1220;
+    --mark: #854d0e;
+    --mark-ink: #fef3c7;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+h1, h2, h3 { margin: 0; line-height: 1.25; }
+a { color: var(--brand); }
+code, pre, textarea.mono { font: 12.5px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+code { background: var(--code); border-radius: 5px; padding: 1px 5px; }
+button, .button {
+  font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px; padding: 7px 13px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+}
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+button.danger { color: var(--danger); }
+button:disabled { opacity: 0.55; cursor: default; }
+:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+input[type="text"], textarea, select {
+  font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; width: 100%;
+}
+.muted { color: var(--muted); }
+.badge {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; vertical-align: middle;
+  background: linear-gradient(160deg, #0ea5e9, #4f46e5); color: #fff; font-weight: 700;
+}
+mark { background: var(--mark); color: var(--mark-ink); border-radius: 3px; padding: 0 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -19,6 +19,14 @@
       },
     };
   }
-  window.chrome = { storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (l) => listeners.push(l) } } };
+  window.chrome = {
+    storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (l) => listeners.push(l) } },
+    // What the popup and options page ask the browser for. Set window.__pgTabUrl to pretend to be on a given site.
+    tabs: { query: async () => [{ url: window.__pgTabUrl || new URLSearchParams(location.search).get('tab') || 'https://claude.ai/chat/demo' }] },
+    runtime: {
+      getManifest: () => ({ version: '0.0.0-harness' }),
+      openOptionsPage: () => { window.__openedOptions = true; },
+    },
+  };
   window.__PG_TEST__ = true; // exposes the dialog's shadow root to tests (see ui.js)
 })();
