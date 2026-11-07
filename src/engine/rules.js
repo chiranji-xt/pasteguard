@@ -55,6 +55,88 @@
     );
   }
 
+  /**
+   * More providers whose keys identify themselves by a distinctive prefix. Formats follow each provider's published
+   * format and the public rule sets of established scanners (gitleaks, MIT licensed) as a reference; the patterns are
+   * written here. Keys with no prefix at all are left to the "name = value" rules, which already catch
+   * CLOUDFLARE_API_TOKEN=..., DATADOG_API_KEY=... and the like.
+   * [id, label, pattern (the secret is group 1), keywords, extra options]
+   */
+  const lowEntropyTail = (prefixLength) => (value) => notPlaceholderKey(value.slice(prefixLength)) && V.shannonEntropy(value.slice(prefixLength)) >= 3.2;
+  const HEX = '[a-f0-9]';
+  const PROVIDERS = [
+    ['onepassword-secret-key', '1Password secret key', `\\b(A3-[A-Z0-9]{6}-(?:[A-Z0-9]{11}|[A-Z0-9]{6}-[A-Z0-9]{5})-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5})\\b`, ['a3-']],
+    ['onepassword-service-token', '1Password service account token', `${B}(ops_eyJ[A-Za-z0-9+/]{250,}={0,3})`, ['ops_eyj']],
+    ['age-secret-key', 'age encryption secret key', `${B}(AGE-SECRET-KEY-1[QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7L]{58})${E}`, ['age-secret-key-1']],
+    ['airtable-token', 'Airtable personal access token', `${B}(pat[A-Za-z0-9]{14}\\.${HEX}{64})${E}`, ['pat']],
+    ['aws-bedrock-key', 'AWS Bedrock API key', `${B}(ABSK[A-Za-z0-9+/]{109,269}={0,2})`, ['absk']],
+    ['alibaba-access-key', 'Alibaba Cloud access key ID', `${B}(LTAI[A-Za-z0-9]{20})${E}`, ['ltai']],
+    ['atlassian-token', 'Atlassian API token', `${B}(ATATT3[A-Za-z0-9_=-]{150,})`, ['atatt3']],
+    ['bitbucket-app-password', 'Bitbucket app password', `${B}(ATBB[A-Za-z0-9_=.-]{30,})${E}`, ['atbb']],
+    ['circleci-token', 'CircleCI personal token', `${B}(CCIPAT_[A-Za-z0-9]{12}_${HEX}{40})${E}`, ['ccipat_']],
+    ['clojars-token', 'Clojars deploy token', `${B}(CLOJARS_[a-z0-9]{60})${E}`, ['clojars_']],
+    ['cloudflare-origin-ca-key', 'Cloudflare Origin CA key', `${B}(v1\\.0-${HEX}{24}-${HEX}{146})${E}`, ['v1.0-'], { validate: (v) => !/(.)\1{7,}/.test(v) }],
+    ['docker-hub-token', 'Docker Hub access token', `${B}(dckr_pat_[A-Za-z0-9_-]{27})${E}`, ['dckr_pat_']],
+    ['doppler-token', 'Doppler token', `${B}(dp\\.(?:pt|st|sa|ct)\\.[A-Za-z0-9]{40,44})${E}`, ['dp.']],
+    ['dropbox-token', 'Dropbox access token', `${B}(sl\\.[A-Za-z0-9_=-]{130,140})${E}`, ['sl.']],
+    ['duffel-token', 'Duffel API token', `${B}(duffel_(?:test|live)_[A-Za-z0-9_=-]{43})${E}`, ['duffel_']],
+    ['dynatrace-token', 'Dynatrace API token', `${B}(dt0c01\\.[A-Za-z0-9]{24}\\.[A-Za-z0-9]{64})${E}`, ['dt0c01.']],
+    ['easypost-key', 'EasyPost API key', `${B}(EZ[AT]K[A-Za-z0-9]{54})${E}`, ['ezak', 'eztk']],
+    ['facebook-token', 'Facebook / Meta access token', `${B}(EAA[MC][A-Za-z0-9]{100,})`, ['eaam', 'eaac']],
+    ['figma-token', 'Figma personal access token', `${B}(figd_[A-Za-z0-9_-]{40})${E}`, ['figd_']],
+    ['flyio-token', 'Fly.io access token', `${B}(fo1_[A-Za-z0-9_-]{43}|fm1[ar]_[A-Za-z0-9+/]{100,}={0,3}|fm2_[A-Za-z0-9+/]{100,}={0,3})`, ['fo1_', 'fm1', 'fm2_']],
+    ['frameio-token', 'Frame.io API token', `${B}(fio-u-[A-Za-z0-9_=-]{64})${E}`, ['fio-u-']],
+    ['gitlab-other-token', 'GitLab token', `${B}((?:glcbt|gldt|glffct|glft|glimt|glagent|gloas|glptt|glrt|glsoat)-[A-Za-z0-9_-]{20,70})${E}`, ['glcbt-', 'gldt-', 'glffct-', 'glft-', 'glimt-', 'glagent-', 'gloas-', 'glptt-', 'glrt-', 'glsoat-']],
+    ['gitlab-runner-token', 'GitLab runner registration token', `${B}(GR1348941[A-Za-z0-9_-]{20})${E}`, ['gr1348941']],
+    ['google-client-secret', 'Google OAuth client secret', `${B}(GOCSPX-[A-Za-z0-9_-]{28})${E}`, ['gocspx-']],
+    ['google-refresh-token', 'Google OAuth refresh token', `${B}(1//0[A-Za-z0-9_-]{40,})${E}`, ['1//0']],
+    ['firebase-server-key', 'Firebase Cloud Messaging server key', `${B}(AAAA[A-Za-z0-9_-]{7}:APA91b[A-Za-z0-9_-]{134})${E}`, ['apa91b']],
+    ['grafana-service-key', 'Grafana API key', `${B}(eyJrIjoi[A-Za-z0-9]{70,400}={0,3})`, ['eyjrijoi']],
+    ['grafana-cloud-token', 'Grafana Cloud token', `${B}(glc_[A-Za-z0-9+/]{32,400}={0,3})`, ['glc_']],
+    ['grafana-service-account', 'Grafana service account token', `${B}(glsa_[A-Za-z0-9]{32}_${HEX}{8})${E}`, ['glsa_']],
+    ['harness-token', 'Harness API key', `${B}((?:pat|sat)\\.[A-Za-z0-9_-]{22}\\.[A-Za-z0-9]{24}\\.[A-Za-z0-9]{20})${E}`, ['pat.', 'sat.']],
+    ['terraform-cloud-token', 'Terraform Cloud API token', `${B}([A-Za-z0-9]{14}\\.atlasv1\\.[A-Za-z0-9_=-]{60,70})${E}`, ['.atlasv1.']],
+    ['vault-token', 'HashiCorp Vault token', `${B}(hv[sb]\\.[A-Za-z0-9_-]{90,300})${E}`, ['hvs.', 'hvb.']],
+    ['heroku-key', 'Heroku API key', `${B}(HRKU-AA[A-Za-z0-9_-]{58})${E}`, ['hrku-']],
+    ['hubspot-token', 'HubSpot private app token', `${B}(pat-(?:na|eu)\\d-${HEX}{8}-${HEX}{4}-${HEX}{4}-${HEX}{4}-${HEX}{12})${E}`, ['pat-na', 'pat-eu']],
+    ['huggingface-org-token', 'Hugging Face organization token', `${B}(api_org_[A-Za-z]{34})${E}`, ['api_org_']],
+    ['infracost-key', 'Infracost API key', `${B}(ico-[A-Za-z0-9]{32})${E}`, ['ico-']],
+    ['mailchimp-key', 'Mailchimp API key', `(?<![A-Za-z0-9-])(${HEX}{32}-us\\d{1,2})${E}`, ['-us']],
+    ['mapbox-secret-token', 'Mapbox secret token', `${B}(sk\\.eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,})${E}`, ['sk.eyj']],
+    ['teams-webhook', 'Microsoft Teams webhook URL', `(https://[A-Za-z0-9.-]+\\.webhook\\.office\\.com/webhook(?:b2)?/[A-Za-z0-9@/_-]{40,})`, ['webhook.office.com']],
+    ['netlify-token', 'Netlify personal access token', `${B}(nfp_[A-Za-z0-9]{30,})${E}`, ['nfp_']],
+    ['newrelic-user-key', 'New Relic user API key', `${B}(NRAK-[A-Z0-9]{27})${E}`, ['nrak-']],
+    ['newrelic-insert-key', 'New Relic insert key', `${B}(NRII-[A-Za-z0-9-]{32})${E}`, ['nrii-']],
+    ['newrelic-browser-key', 'New Relic browser key', `${B}(NRJS-${HEX}{19})${E}`, ['nrjs-']],
+    ['openshift-token', 'OpenShift user token', `${B}(sha256~[A-Za-z0-9_-]{43})${E}`, ['sha256~']],
+    ['planetscale-token', 'PlanetScale token', `${B}(pscale_(?:tkn|oauth|pw)_[A-Za-z0-9_=.-]{32,64})${E}`, ['pscale_']],
+    ['plaid-token', 'Plaid access token', `${B}(access-(?:sandbox|development|production)-${HEX}{8}-${HEX}{4}-${HEX}{4}-${HEX}{4}-${HEX}{12})${E}`, ['access-sandbox-', 'access-development-', 'access-production-']],
+    ['postman-key', 'Postman API key', `${B}(PMAK-${HEX}{24}-${HEX}{34})${E}`, ['pmak-']],
+    ['prefect-key', 'Prefect API key', `${B}(pnu_[A-Za-z0-9]{36})${E}`, ['pnu_']],
+    ['pulumi-token', 'Pulumi access token', `${B}(pul-${HEX}{40})${E}`, ['pul-']],
+    ['readme-key', 'ReadMe API key', `${B}(rdme_[a-z0-9]{70})${E}`, ['rdme_']],
+    ['rubygems-key', 'RubyGems API key', `${B}(rubygems_${HEX}{48})${E}`, ['rubygems_']],
+    ['scalingo-token', 'Scalingo API token', `${B}(tk-us-[A-Za-z0-9_-]{48})${E}`, ['tk-us-']],
+    ['brevo-key', 'Brevo (Sendinblue) API key', `${B}(xkeysib-${HEX}{64}-[A-Za-z0-9]{16})${E}`, ['xkeysib-']],
+    ['sentry-user-token', 'Sentry user token', `${B}(sntryu_${HEX}{64})${E}`, ['sntryu_']],
+    ['sentry-org-token', 'Sentry organization token', `${B}(sntrys_[A-Za-z0-9+/_=]{60,400})${E}`, ['sntrys_']],
+    ['settlemint-token', 'SettleMint access token', `${B}(sm_(?:aat|pat|sat)_[A-Za-z0-9]{16})${E}`, ['sm_aat_', 'sm_pat_', 'sm_sat_'], { severity: 'medium', priority: 75 }],
+    ['shippo-key', 'Shippo API key', `${B}(shippo_(?:live|test)_${HEX}{40})${E}`, ['shippo_']],
+    ['sonarqube-token', 'SonarQube token', `${B}(sq[pau]_${HEX}{40})${E}`, ['sqp_', 'sqa_', 'squ_']],
+    ['sourcegraph-token', 'Sourcegraph access token', `${B}(sgp_(?:(?:${HEX}{16}|local)_)?${HEX}{40})${E}`, ['sgp_']],
+    ['square-access-token', 'Square access token', `${B}(EAAA[A-Za-z0-9_-]{60})${E}`, ['eaaa']],
+    ['stripe-webhook-secret', 'Stripe webhook signing secret', `${B}(whsec_[A-Za-z0-9]{32,})${E}`, ['whsec_']],
+    ['tailscale-key', 'Tailscale key', `${B}(tskey-(?:api|auth|client|scim)-[A-Za-z0-9]{6,}(?:CNTRL)?-[A-Za-z0-9]{20,})${E}`, ['tskey-']],
+    ['typeform-token', 'Typeform personal token', `${B}(tfp_[A-Za-z0-9_.=-]{59})${E}`, ['tfp_']],
+    ['octopus-deploy-key', 'Octopus Deploy API key', `${B}(API-[A-Z0-9]{26})${E}`, ['api-'], { severity: 'medium', priority: 70, validate: (v) => notPlaceholderKey(v) && V.shannonEntropy(v.slice(4)) >= 3.4 }],
+    ['twitter-bearer-token', 'X / Twitter bearer token', `${B}(A{22}[A-Za-z0-9%]{80,100})${E}`, ['aaaaaaaaaaaaaaaaaaaaaa'], { validate: (v) => V.shannonEntropy(v.slice(22)) >= 3.8 }],
+    ['dropbox-long-lived-token', 'Dropbox long-lived token', `${B}([a-z0-9]{11}AAAAAAAAAA[A-Za-z0-9_=-]{43})${E}`, ['aaaaaaaaaa'], { validate: (v) => V.shannonEntropy(v.replace(/AAAAAAAAAA/, '')) >= 3.6 }],
+  ];
+
+  function providerRules() {
+    return PROVIDERS.map(([id, label, source, keywords, extra]) => apiKey(id, label, new RegExp(source), keywords, extra));
+  }
+
   const rules = [
     // --- private keys -----------------------------------------------------------------------
     {
@@ -80,7 +162,7 @@
     },
 
     // --- provider API keys (fixed prefixes) ---------------------------------------------------
-    apiKey('anthropic-api-key', 'Anthropic API key', new RegExp(`${B}(sk-ant-(?:api|admin|sid)\\d{2}-[A-Za-z0-9_-]{60,220})${E}`), ['sk-ant-']),
+    apiKey('anthropic-api-key', 'Anthropic API key', new RegExp(`${B}(sk-ant-[a-z]{3,5}\\d{2}-[A-Za-z0-9_-]{60,220})${E}`), ['sk-ant-']),
     apiKey('openrouter-api-key', 'OpenRouter API key', new RegExp(`${B}(sk-or-v1-[a-f0-9]{64})${E}`), ['sk-or-']),
     apiKey('openai-api-key', 'OpenAI-style API key (sk-...)', new RegExp(`${B}(sk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{32,250})${E}`), ['sk-'], {
       priority: 50,
@@ -138,6 +220,8 @@
     apiKey('mailgun-key', 'Mailgun API key', new RegExp(`${B}(key-[0-9a-f]{32})${E}`), ['key-'], { severity: 'medium', priority: 80 }),
     apiKey('twilio-api-key', 'Twilio API key SID', new RegExp(`${B}(SK[0-9a-f]{32})${E}`), ['sk'], { severity: 'medium', priority: 80 }),
     apiKey('azure-storage-key', 'Azure storage account key', /AccountKey=([A-Za-z0-9+/]{70,100}={0,2})/, ['accountkey=']),
+
+    ...providerRules(),
 
     // --- tokens -------------------------------------------------------------------------------
     {

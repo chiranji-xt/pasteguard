@@ -418,4 +418,6 @@ function dirtyCorpus() {
   };
 }
 
+Object.assign(fixtures, require('./fixtures-providers.js')(rand));
+
 module.exports = { fixtures, cleanCorpus, dirtyCorpus, rand, jwt, card, aadhaar, group4, pem, b64, b64url, ALPHABET };
