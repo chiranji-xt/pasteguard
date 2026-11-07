@@ -26,6 +26,12 @@
   window.addEventListener('drop', (e) => note({ page: 'drop', id: e.target.id, files: e.dataTransfer ? Array.from(e.dataTransfer.files).map((f) => f.name) : [] }), true);
   document.getElementById('file').addEventListener('change', (e) => note({ page: 'file-change', files: Array.from(e.target.files).map((f) => f.name) }));
 
+  // A chat composer: Enter or the Send button "sends" (the page records it and clears the box), like a real chat site.
+  const chat = document.getElementById('chat');
+  const send = () => { note({ page: 'send', text: chat.value }); chat.value = ''; };
+  chat.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+  document.getElementById('sendbtn').addEventListener('click', send);
+
   // A rich editor that takes over paste, as ProseMirror does.
   //
   // The important detail: like ProseMirror, it keeps its OWN record of the selection, which it only updates when the

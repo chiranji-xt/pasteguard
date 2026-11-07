@@ -43,7 +43,7 @@
   async function reset() {
     await idle(); // never start a check while the previous one's redaction is still running
     while (dialog()) { (button('Cancel') || button("Don't attach")).click(); await settle(); }
-    for (const id of ['ta', 'inp']) $(id).value = '';
+    for (const id of ['ta', 'inp', 'chat']) $(id).value = '';
     for (const id of ['ce', 'rich']) $(id).textContent = '';
     $('file').value = '';
     window.__log.length = 0;
@@ -511,6 +511,104 @@
     if (s.warned !== 3 || s.redacted !== 1 || s.pastedAnyway !== 1 || s.cancelled !== 1) return 'stats: ' + JSON.stringify(s);
     const stored = JSON.stringify(Object.entries(localStorage).filter(([key]) => key.startsWith('pgharness')));
     return !/ghp_[A-Za-z0-9]{36}/.test(stored) || 'a secret ended up in storage';
+  });
+
+
+  // --- sending: Enter and the Send button -------------------------------------------------------------------
+  const sends = () => window.__log.filter((e) => e.page === 'send');
+  const pressEnter = (el) => { el.focus(); const e = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, composed: true }); el.dispatchEvent(e); return e; };
+
+  check('Enter with a secret in the box is held back: nothing is sent, a dialog asks', async () => {
+    const k = KEY();
+    $('chat').value = 'use ' + k;
+    pressEnter($('chat'));
+    await settle(80);
+    if (sends().length) return 'the message was sent with the secret in it';
+    if (!dialog()) return 'no dialog appeared';
+    return /not been sent/i.test(dialog().textContent) || 'dialog text: ' + dialog().textContent.slice(0, 120);
+  });
+
+  check('Enter with a clean message sends normally and shows nothing', async () => {
+    $('chat').value = 'what is the token limit for this model?';
+    pressEnter($('chat'));
+    await settle(80);
+    return (sends().length === 1 && !dialog()) || 'sends: ' + sends().length + ', dialog: ' + !!dialog();
+  });
+
+  check('the Send button is held back too', async () => {
+    $('chat').value = 'key ' + KEY();
+    $('chat').focus();
+    $('chat').dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: 'x' }));
+    $('sendbtn').click();
+    await settle(80);
+    return (!sends().length && !!dialog()) || 'sends: ' + sends().length + ', dialog: ' + !!dialog();
+  });
+
+  check('"Redact the message" edits the box, does not send, and a second Enter then sends the redacted text', async () => {
+    const k = KEY();
+    $('chat').value = 'use ' + k + ' now';
+    pressEnter($('chat'));
+    await settle(80);
+    button('Redact the message').click();
+    await idle();
+    if (sends().length) return 'it sent on its own';
+    if ($('chat').value.includes(k)) return 'the secret is still in the box';
+    pressEnter($('chat'));
+    await settle(80);
+    if (sends().length !== 1) return 'second Enter did not send';
+    return !JSON.stringify(window.__log).includes(k) || 'the secret reached the page';
+  });
+
+  check('"Keep it, let me send" lets the next Enter through, once chosen', async () => {
+    const k = KEY();
+    $('chat').value = 'use ' + k;
+    pressEnter($('chat'));
+    await settle(80);
+    button('Keep it, let me send').click();
+    await idle();
+    if (sends().length) return 'it sent on its own';
+    pressEnter($('chat'));
+    await settle(80);
+    return (sends().length === 1 && sends()[0].text.includes(k)) || 'sends: ' + sends().length;
+  });
+
+  check('Cancel on the send dialog leaves the box alone and sends nothing', async () => {
+    const k = KEY();
+    $('chat').value = 'use ' + k;
+    pressEnter($('chat'));
+    await settle(80);
+    button('Cancel').click();
+    await idle();
+    return (!sends().length && $('chat').value.includes(k)) || 'box: ' + $('chat').value;
+  });
+
+  check('Shift+Enter, Enter during IME composition, and the setting switched off never hold anything', async () => {
+    $('chat').value = 'use ' + KEY();
+    $('chat').focus();
+    $('chat').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true, composed: true }));
+    $('chat').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true, composed: true }));
+    await settle(60);
+    if (dialog()) return 'a dialog opened for Shift+Enter or composition';
+    await withSettings({ sendGuard: false });
+    pressEnter($('chat'));
+    await settle(60);
+    return (sends().length === 1 && !dialog()) || 'with the setting off, sends: ' + sends().length;
+  });
+
+  check('an unrelated button is not treated as Send', async () => {
+    $('chat').value = 'use ' + KEY();
+    $('chat').focus();
+    $('run').click();
+    await settle(60);
+    return !dialog() || 'a dialog opened for the Run button';
+  });
+
+  check('in "block" mode a send with a secret is refused with a message, nothing is sent', async () => {
+    await withSettings({ action: 'block' });
+    $('chat').value = 'use ' + KEY();
+    pressEnter($('chat'));
+    await settle(80);
+    return (!sends().length && /not sent/i.test(toastText() || '')) || 'sends: ' + sends().length + ', toast: ' + toastText();
   });
 
   window.runHarnessChecks = async function () {

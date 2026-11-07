@@ -223,6 +223,7 @@
    */
   function confirmPaste(options) {
     const { findings, redactedText, mask, truncated } = options;
+    const sending = options.source === 'send';
     const checks = [];
     const items = findings.map((f) => {
       const box = h('input', { type: 'checkbox' });
@@ -236,18 +237,24 @@
     });
     const body = [h('ul', null, ...items)];
     if (truncated) body.push(h('p', { class: 'note', text: 'This paste is very large, so only the first part was checked.' }));
-    body.push(h('details', null, h('summary', { text: 'Show what will be pasted if you redact' }), previewNodes(redactedText)));
+    body.push(h('details', null, h('summary', { text: sending ? 'Show what your message will say if you redact' : 'Show what will be pasted if you redact' }), previewNodes(redactedText)));
 
     return showModal(
       () => ({
-        title: 'Paste Guard found ' + (findings.length === 1 ? 'something sensitive' : findings.length + ' sensitive items'),
-        sub: 'Nothing has been pasted yet. This check ran on your device and nothing was sent anywhere.',
+        title: sending ? 'Your message still contains ' + (findings.length === 1 ? 'something sensitive' : findings.length + ' sensitive items') : 'Paste Guard found ' + (findings.length === 1 ? 'something sensitive' : findings.length + ' sensitive items'),
+        sub: sending ? 'It has not been sent. This check ran on your device and nothing was sent anywhere. After you choose, press send yourself.' : 'Nothing has been pasted yet. This check ran on your device and nothing was sent anywhere.',
         body,
-        buttons: [
-          { label: 'Redact and paste', value: 'redact', kind: 'primary' },
-          { label: 'Paste anyway', value: 'original', kind: 'danger' },
-          { label: 'Cancel', value: 'cancel' },
-        ],
+        buttons: sending
+          ? [
+              { label: 'Redact the message', value: 'redact', kind: 'primary' },
+              { label: 'Keep it, let me send', value: 'original', kind: 'danger' },
+              { label: 'Cancel', value: 'cancel' },
+            ]
+          : [
+              { label: 'Redact and paste', value: 'redact', kind: 'primary' },
+              { label: 'Paste anyway', value: 'original', kind: 'danger' },
+              { label: 'Cancel', value: 'cancel' },
+            ],
       }),
       'cancel'
     ).then((choice) => ({ choice, ignore: checks.filter((c) => c.box.checked).map((c) => c.finding) }));

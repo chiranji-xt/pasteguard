@@ -134,6 +134,86 @@
     liveTimers.set(target.el, setTimeout(() => liveScan(target), LIVE_DELAY_MS));
   }
 
+  // --- sending: hold Enter / the send button while the box still holds a secret ----------------------
+  // Paste Guard never sends anything itself. It stops the send, asks, and the person presses send again.
+
+  let lastBox = null; // the message box the person last used (the send button takes focus away from it)
+  const SEND_BUTTON = /\b(?:send|submit)\b/i;
+
+  function rememberBox(event) {
+    const target = insert.findTarget(event);
+    if (target && !(target.kind === 'field' && target.el.type === 'password')) lastBox = target;
+  }
+
+  /** Check the box now. Returns true if the send was held back. */
+  function guardSend(event, target) {
+    if (!settings.sendGuard || !active() || busy || !target || !target.el.isConnected) return false;
+    const text = insert.readText(target);
+    if (!text || text.length > LIVE_MAX_CHARS) return false;
+    const options = scanOptions();
+    options.allowlist = new Set([...allowlist, ...acksFor(target.el)]);
+    const { findings, truncated } = detect.scan(text, options);
+    if (!findings.length) return false;
+
+    hold(event);
+    stopLive();
+    const redacted = detect.redact(text, findings);
+    const finishRedact = async () => {
+      busy = true;
+      let ok = false;
+      try {
+        ok = await insert.replaceAll(target, redacted.text, (now) => detect.scan(now, options).findings.length === 0);
+      } finally {
+        busy = false;
+      }
+      if (ok) {
+        stat('redacted');
+        ui.toast('Redacted. Check the message, then press send.');
+      } else ui.toast('Paste Guard could not redact the message box automatically. Please remove the secret by hand.', 'warn');
+    };
+
+    if (settings.action === 'block') {
+      ui.toast('Not sent: your message contains ' + findings.length + ' ' + noun(findings.length) + '. Remove it and send again.', 'warn');
+      stat('cancelled');
+      return true;
+    }
+    if (settings.action === 'redact') {
+      finishRedact();
+      return true;
+    }
+    busy = true;
+    stat('warned');
+    ui
+      .confirmPaste({ findings, redactedText: redacted.text, mask, truncated, source: 'send' })
+      .finally(() => (busy = false))
+      .then(async (answer) => {
+        await rememberIgnored(answer.ignore).catch(() => {});
+        if (answer.choice === 'redact') await finishRedact();
+        else if (answer.choice === 'original') {
+          for (const f of findings) acksFor(target.el).add(detect.hashValue(f.value));
+          ui.toast('Kept. Press send when you are ready.');
+          stat('pastedAnyway');
+        } else stat('cancelled');
+      })
+      .catch(() => {});
+    return true;
+  }
+
+  function onKeyDown(event) {
+    if (event.key !== 'Enter' || event.isComposing || event.shiftKey || event.altKey || event.repeat) return;
+    const target = insert.findTarget(event);
+    if (!target || (target.kind === 'field' && target.el.type === 'password')) return;
+    guardSend(event, target);
+  }
+
+  function onClick(event) {
+    const el = event.target && event.target.closest ? event.target.closest('button, [role="button"], input[type="submit"]') : null;
+    if (!el || !lastBox || !lastBox.el.isConnected) return;
+    const name = [el.getAttribute('aria-label'), el.getAttribute('data-testid'), el.getAttribute('title'), el.type === 'submit' ? 'submit' : '', el.id].filter(Boolean).join(' ');
+    if (!SEND_BUTTON.test(name.replace(/[-_]/g, ' '))) return;
+    guardSend(event, lastBox);
+  }
+
   // --- text: paste and drop ----------------------------------------------------------------------
 
   async function handleText(event, text, source) {
@@ -307,6 +387,10 @@
   global.addEventListener('drop', onDrop, true);
   global.addEventListener('change', onChange, true);
   global.addEventListener('input', onInput, true);
+  global.addEventListener('keydown', onKeyDown, true);
+  global.addEventListener('click', onClick, true);
+  global.addEventListener('focusin', rememberBox, true);
+  global.addEventListener('input', rememberBox, true);
 
   PG.content = { handleText, onPaste, onDrop, onChange, onInput, state: () => ({ settings, allowlist, busy }) };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
