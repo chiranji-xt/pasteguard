@@ -10,6 +10,8 @@ The automated tests cover the engine (200 tests) and the content script against 
 4. Open the extension's **Settings** and use **Try it → Fill with an example** to get a block of made-up secrets. Copy that text.
 
 > Only ever test with made-up secrets. The example generator makes strings that match real key formats but belong to nothing.
+>
+> **Always generate the example inside the extension (Settings → Try it), never copy it out of a chat window or a web page.** Some chat apps mask private-key bodies when they display them, so a copy of a key can arrive as a row of dots, which Paste Guard rightly ignores.
 
 ## For each site (ChatGPT, Claude, Gemini, Copilot, Perplexity, Grok, DeepSeek, ...)
 
@@ -18,7 +20,7 @@ Do these in the site's normal message box. Tick them off in the release notes.
 | # | Do this | Expect |
 | --- | --- | --- |
 | 1 | Paste ordinary text ("hello, can you help me with a recipe?") | Pastes normally. No dialog. |
-| 2 | Paste the example block | The dialog appears, listing 4 items, **before** anything shows in the box. |
+| 2 | Paste the example block | The dialog appears, listing 6 items (including a private key), **before** anything shows in the box. |
 | 3 | Press **Redact and paste** | The box contains the text with `[REDACTED:...]` placeholders, once (not twice). The cursor is at the end. |
 | 4 | Press Enter to send that message | The site accepts it as normal (the box is not "empty" or stuck). |
 | 5 | Paste the example block again, press **Cancel** | Nothing is inserted. Focus is back in the box. |

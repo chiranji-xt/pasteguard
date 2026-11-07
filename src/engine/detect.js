@@ -188,7 +188,11 @@
   /** A short, safe-to-display version of a value: enough to recognise it, never enough to use it. */
   function mask(finding) {
     const v = finding.value;
-    if (finding.ruleId === 'private-key') return v.split('\n')[0].trim() + ' ... (' + v.length + ' characters)';
+    if (finding.ruleId === 'private-key') {
+      // Only the header, never "the first line": a key written on one line (Google service-account JSON) has no other line.
+      const header = v.match(/^-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/);
+      return (header ? header[0] : '-----BEGIN PRIVATE KEY-----') + ' ... (' + v.length + ' characters)';
+    }
     if (finding.category === 'financial' || finding.category === 'government') {
       const digits = v.replace(/[^A-Za-z0-9]/g, '');
       return '•••• ' + digits.slice(-4);

@@ -107,14 +107,20 @@
     let card = '4539';
     while (card.length < 15) card += Math.floor(Math.random() * 10);
     card += PG.validators.luhnCheckDigit(card);
+    // A service-account key as it appears in Google's JSON file: the line breaks are written out as \n text.
+    const keyLines = [rand(64), rand(64), rand(64)].join('\\n');
     return [
       'Here is my config, can you see why it fails?',
       '',
       'OPENAI_API_KEY=' + 'sk-' + 'proj-' + rand(90),
       'DATABASE_URL=postgres://app:' + rand(16) + '@db.internal:5432/app',
       'GITHUB_TOKEN=' + 'gh' + 'p_' + rand(36),
+      'DB_PASS=' + rand(12) + '#9',
       'PORT=8080',
       'card: ' + card.replace(/(\d{4})(?=\d)/g, '$1 '),
+      '',
+      'And the service account file:',
+      '{"type":"service_account","private_key":"-----BEGIN ' + 'PRIVATE KEY-----\\n' + keyLines + '\\n-----END ' + 'PRIVATE KEY-----\\n","client_email":"svc@proj.iam.gserviceaccount.com"}',
     ].join('\n');
   }
 

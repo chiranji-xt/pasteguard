@@ -195,6 +195,27 @@ test('masked previews never show enough to use the secret', () => {
   assert.ok(mask(keyBlock).startsWith('-----BEGIN') && mask(keyBlock).length < 80);
 });
 
+test('a masked preview never reveals the middle of any secret, for every kind of rule and every form', () => {
+  // Regression: a private key on ONE line (Google service-account JSON) was shown in full, because the preview took "the first line".
+  const ALL_ON = { minSeverity: 'low', categories: Object.fromEntries(Object.keys(categories).map((c) => [c, true])) };
+  let checked = 0;
+  for (const [id, fx] of Object.entries(fixtures)) {
+    for (const make of fx.positive) {
+      const text = make();
+      for (const f of scan(text, ALL_ON).findings.filter((x) => x.ruleId === id)) {
+        const shown = mask(f);
+        assert.ok(shown.length <= 90, `${id}: preview is ${shown.length} characters: ${shown.slice(0, 120)}`);
+        if (f.value.length >= 30) {
+          const middle = f.value.slice(Math.floor(f.value.length / 2) - 6, Math.floor(f.value.length / 2) + 6);
+          assert.ok(!shown.includes(middle), `${id}: the preview reveals the middle of the secret`);
+        }
+        checked++;
+      }
+    }
+  }
+  assert.ok(checked > 100, 'the test must actually cover many cases (covered ' + checked + ')');
+});
+
 test('redact replaces each finding with a labelled placeholder and keeps everything else', () => {
   const a = 'gh' + 'p_' + rand(36, 'alnum', 15);
   const text = `export TOKEN=${a}\nrun it`;
