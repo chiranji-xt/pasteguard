@@ -67,7 +67,8 @@ for (const browser of ['chrome', 'firefox']) {
     const m = manifestFor(browser);
     assert.equal(m.manifest_version, 3);
     assert.equal(m.version, pkg.version);
-    assert.deepEqual(m.permissions, ['storage', 'activeTab'], 'ask for as little as possible');
+    assert.deepEqual(m.permissions, ['storage', 'activeTab', 'scripting'], 'ask for as little as possible');
+    assert.deepEqual(m.optional_host_permissions, ['https://*/*'], 'sites are only ever added one at a time, on a click, after the browser asks');
     assert.equal(m.host_permissions, undefined);
     assert.equal(m.background, undefined, 'there is no background script: nothing runs when no protected page is open');
     assert.deepEqual(m.content_scripts[0].matches, sites.matchPatterns());
@@ -119,4 +120,13 @@ test('checkBuild catches a broken extension', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('sites.siteFor knows the sites the person added, over https only', () => {
+  assert.deepEqual(sites.siteFor('https://chat.example.com/x', ['chat.example.com']), { name: 'chat.example.com', host: 'chat.example.com', custom: true });
+  assert.equal(sites.siteFor('http://chat.example.com/x', ['chat.example.com']), null);
+  assert.equal(sites.siteFor('https://other.example.com/', ['chat.example.com']), null);
+  assert.equal(sites.siteFor('https://claude.ai/new', []).name, 'Claude');
+  assert.equal(sites.isValidHost('127.0.0.1'), false);
+  assert.equal(sites.isValidHost('app.example.co'), true);
 });

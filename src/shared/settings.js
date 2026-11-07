@@ -24,6 +24,8 @@
     return out;
   }
 
+  const HOST_NAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+
   function defaults() {
     return {
       version: 1,
@@ -35,6 +37,7 @@
       liveCheck: true, // also warn (without blocking) when a secret shows up in the message box as you type
       categories: defaultCategories(),
       pausedHosts: [],
+      customSites: [], // sites the person added with "Protect this site"
       customPatterns: [],
     };
   }
@@ -53,6 +56,9 @@
       for (const name of Object.keys(out.categories)) {
         if (typeof raw.categories[name] === 'boolean') out.categories[name] = raw.categories[name];
       }
+    }
+    if (Array.isArray(raw.customSites)) {
+      out.customSites = Array.from(new Set(raw.customSites.filter((h) => typeof h === 'string' && HOST_NAME.test(h)).map((h) => h.toLowerCase()))).slice(0, 50);
     }
     if (Array.isArray(raw.pausedHosts)) {
       out.pausedHosts = Array.from(

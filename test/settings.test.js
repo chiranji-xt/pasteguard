@@ -170,3 +170,10 @@ test('siteFor recognises protected pages and nothing else', () => {
   assert.equal(sites.siteFor('not a url'), null);
   assert.equal(sites.siteFor('chrome://extensions'), null);
 });
+
+test('custom sites: only plain https host names are kept', () => {
+  const s = require('../src/shared/settings.js');
+  const out = s.normalize({ customSites: ['Chat.Example.com', 'chat.example.com', '127.0.0.1', 'localhost', 'a b.com', 'https://x.com', 'x.com/path', 42, 'ok-site.io'] });
+  assert.deepEqual(out.customSites, ['chat.example.com', 'ok-site.io']);
+  assert.deepEqual(s.normalize({}).customSites, []);
+});

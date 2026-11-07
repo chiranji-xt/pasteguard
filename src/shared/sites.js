@@ -27,6 +27,34 @@
     { name: 'OpenRouter', matches: ['openrouter.ai'] },
     { name: 'OpenAI Platform', matches: ['platform.openai.com'] },
     { name: 'Anthropic Console', matches: ['console.anthropic.com'] },
+    { name: 'Claude (claude.com)', matches: ['claude.com'] },
+    { name: 'Microsoft 365 Copilot', matches: ['m365.cloud.microsoft', 'copilot.cloud.microsoft'] },
+    { name: 'GitHub Copilot Chat', matches: ['github.com/copilot'] },
+    { name: 'Grok on X', matches: ['x.com/i/grok'] },
+    { name: 'Kimi', matches: ['www.kimi.com', 'kimi.com', 'kimi.moonshot.cn'] },
+    { name: 'Z.ai (GLM)', matches: ['chat.z.ai'] },
+    { name: 'LMArena', matches: ['lmarena.ai'] },
+    { name: 'Groq Console', matches: ['console.groq.com'] },
+    { name: 'DuckDuckGo AI Chat', matches: ['duck.ai', 'duckduckgo.com/aichat'] },
+    { name: 'You.com', matches: ['you.com'] },
+    { name: 'Phind', matches: ['www.phind.com', 'phind.com'] },
+    { name: 'Kagi Assistant', matches: ['kagi.com/assistant'] },
+    { name: 'Pi', matches: ['pi.ai'] },
+    { name: 'Character.AI', matches: ['character.ai', 'www.character.ai'] },
+    { name: 'Venice', matches: ['venice.ai'] },
+    { name: 'Monica', matches: ['monica.im'] },
+    { name: 'Manus', matches: ['manus.im'] },
+    { name: 'Genspark', matches: ['www.genspark.ai', 'genspark.ai'] },
+    { name: 'Coze', matches: ['www.coze.com', 'www.coze.cn'] },
+    { name: 'NotebookLM', matches: ['notebooklm.google.com'] },
+    { name: 'Jules', matches: ['jules.google.com'] },
+    { name: 'v0', matches: ['v0.dev', 'v0.app'] },
+    { name: 'Bolt', matches: ['bolt.new'] },
+    { name: 'Lovable', matches: ['lovable.dev'] },
+    { name: 'Replit', matches: ['replit.com'] },
+    { name: 'Base44', matches: ['base44.com', 'app.base44.com'] },
+    { name: 'Devin', matches: ['app.devin.ai'] },
+    { name: 'Cursor Agents', matches: ['cursor.com/agents'] },
   ];
 
   function split(entry) {
@@ -46,8 +74,12 @@
     return patterns;
   }
 
-  /** The site a URL belongs to ({ name, host }), or null if Paste Guard does not run there. */
-  function siteFor(url) {
+  const HOST = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+  /** A host the person may add themselves: a plain https website name (no IP addresses, ports or paths). */
+  const isValidHost = (host) => typeof host === 'string' && HOST.test(host);
+
+  /** The site a URL belongs to ({ name, host }), or null if Paste Guard does not run there. `custom` is the list of hosts the person added. */
+  function siteFor(url, custom) {
     let parsed;
     try {
       parsed = new URL(url);
@@ -63,10 +95,11 @@
         }
       }
     }
+    if (Array.isArray(custom) && custom.includes(parsed.hostname.toLowerCase())) return { name: parsed.hostname, host: parsed.hostname, custom: true };
     return null;
   }
 
-  PG.sites = { list: SITES, matchPatterns, siteFor };
+  PG.sites = { list: SITES, matchPatterns, siteFor, isValidHost };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = PG.sites;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -80,8 +80,9 @@ test('the only storage it touches holds settings, hashes and counts', () => {
 test('the manifest asks for the minimum', () => {
   for (const browser of ['chrome', 'firefox']) {
     const m = manifestFor(browser);
-    assert.deepEqual(m.permissions.slice().sort(), ['activeTab', 'storage']);
-    for (const absent of ['host_permissions', 'optional_permissions', 'optional_host_permissions', 'background', 'web_accessible_resources', 'externally_connectable', 'declarative_net_request', 'chrome_url_overrides', 'devtools_page', 'commands']) {
+    assert.deepEqual(m.permissions.slice().sort(), ['activeTab', 'scripting', 'storage']);
+    assert.deepEqual(m.optional_host_permissions, ['https://*/*'], 'host access is optional, https only, and requested per site');
+    for (const absent of ['host_permissions', 'optional_permissions', 'background', 'web_accessible_resources', 'externally_connectable', 'declarative_net_request', 'chrome_url_overrides', 'devtools_page', 'commands']) {
       assert.equal(m[absent], undefined, `${browser}: the manifest must not declare ${absent}`);
     }
     assert.equal(m.content_security_policy, undefined, 'the default extension CSP is the strictest option');

@@ -36,7 +36,10 @@ function manifestFor(browser) {
     icons: ICONS,
     action: { default_title: 'Paste Guard', default_popup: 'popup/popup.html', default_icon: ICONS },
     options_ui: { page: 'options/options.html', open_in_tab: true },
-    permissions: ['storage', 'activeTab'],
+    // `scripting` and the optional host access are used only when the person clicks "Protect this site" in the popup:
+    // the browser then asks for that one site, and nothing is granted up front.
+    permissions: ['storage', 'activeTab', 'scripting'],
+    optional_host_permissions: ['https://*/*'],
     content_scripts: [
       {
         matches: sites.matchPatterns(),
@@ -101,7 +104,7 @@ function checkBuild(dir) {
     if (/\son[a-z]+\s*=\s*["']/i.test(html)) problems.push(`${page} has an inline event handler (onclick=...), which extension pages cannot run`);
     if (/https?:\/\/[^"'\s]+\.(?:js|css)/i.test(html)) problems.push(`${page} loads code from the network, which the extension must never do`);
   }
-  if (!manifest.permissions.every((p) => ['storage', 'activeTab'].includes(p))) problems.push('unexpected permission: keep the permission list minimal');
+  if (!manifest.permissions.every((p) => ['storage', 'activeTab', 'scripting'].includes(p))) problems.push('unexpected permission: keep the permission list minimal');
   if (manifest.host_permissions) problems.push('host_permissions found: the extension should only need content-script matches');
   return problems;
 }
