@@ -36,6 +36,46 @@ for (const [name, { text, expect }] of Object.entries(dirtyCorpus())) {
   });
 }
 
+// --- invisible characters inside a secret ----------------------------------------------------------
+
+test('a zero-width character inside a token does not hide it, and redaction removes the whole span', () => {
+  const k = 'gh' + 'p_' + rand(36, 'alnum', 31);
+  for (const invisible of ['​', '‌', '‍', '⁠', '﻿', '­']) {
+    const dirty = k.slice(0, 18) + invisible + k.slice(18);
+    const text = 'before ' + dirty + ' after';
+    const { findings } = scan(text, DEFAULTS);
+    assert.equal(findings.length, 1, 'U+' + invisible.charCodeAt(0).toString(16));
+    assert.equal(text.slice(findings[0].start, findings[0].end), dirty, 'positions point into the original text');
+    assert.equal(redact(text, findings).text, 'before [REDACTED:GITHUB_TOKEN] after');
+  }
+});
+
+test('invisible characters before and between several secrets keep every position right', () => {
+  const a = 'gh' + 'p_' + rand(36, 'alnum', 32);
+  const b = 'AKIA' + rand(16, 'b32', 33);
+  const text = '​​one ' + a.slice(0, 10) + '​' + a.slice(10) + '﻿ two ' + b + ' ‍end';
+  const { findings } = scan(text, DEFAULTS);
+  assert.equal(findings.length, 2);
+  assert.equal(redact(text, findings).text, '​​one [REDACTED:GITHUB_TOKEN]﻿ two [REDACTED:AWS_ACCESS_KEY_ID] ‍end');
+});
+
+test('text without invisible characters is untouched by that step', () => {
+  const k = 'gh' + 'p_' + rand(36, 'alnum', 34);
+  const [f] = scan('x ' + k, DEFAULTS).findings;
+  assert.equal(f.start, 2);
+  assert.equal(f.end, 2 + k.length);
+});
+
+test('a Google service-account key written with \\n escapes is caught and fully redacted', () => {
+  const head = '-----BEGIN ' + 'PRIVATE KEY-----';
+  const foot = '-----END ' + 'PRIVATE KEY-----';
+  const body = [rand(64, 'b64', 40), rand(64, 'b64', 41), rand(64, 'b64', 42)].join('\\n');
+  const text = '{"type":"service_account","private_key":"' + head + '\\n' + body + '\\n' + foot + '\\n","client_email":"svc@p.iam.gserviceaccount.com"}';
+  const out = redact(text, scan(text, DEFAULTS).findings).text;
+  assert.ok(out.includes('[REDACTED:PRIVATE_KEY]') && out.includes('client_email'), out);
+  assert.ok(!out.includes(body.slice(0, 40)), 'no key material is left');
+});
+
 // --- findings -------------------------------------------------------------------------------------
 
 test('findings carry exact positions that point at the secret', () => {

@@ -23,9 +23,12 @@
   const B = '(?<![A-Za-z0-9_-])'; // not glued to a longer token on the left
   const E = '(?![A-Za-z0-9_-])'; // ...or on the right
 
-  const PASSWORD_KEY = '[A-Za-z0-9_.\\-]{0,40}(?:password|passwd|pwd)[A-Za-z0-9_.\\-]{0,40}';
+  // password, passwd, pwd, passphrase anywhere in the name; or "pass" / "pw" as a whole word of it (DB_PASS, user.pw),
+  // never inside another word (bypass, compass).
+  const PASSWORD_KEY =
+    '(?:[A-Za-z0-9_.\\-]{0,40}(?:password|passwd|pwd|passphrase)[A-Za-z0-9_.\\-]{0,40}|(?:[A-Za-z0-9]{1,20}[_.\\-])?(?:pass|pw)(?:[_.\\-][A-Za-z0-9_.\\-]{0,30})?)';
   const SECRET_KEY =
-    '[A-Za-z0-9_.\\-]{0,40}(?:secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|auth[_-]?key|client[_-]?secret|credential)[A-Za-z0-9_.\\-]{0,40}';
+    '[A-Za-z0-9_.\\-]{0,40}(?:secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|auth[_-]?key|client[_-]?secret|credential|session[_-]?key|encryption[_-]?key|signing[_-]?key|master[_-]?key|app[_-]?key)[A-Za-z0-9_.\\-]{0,40}';
   // key = value, key: value, "key": "value". The value may be quoted or bare.
   // The key and its value share a line: spaces and tabs only between them, never a line break.
   const assignment = (key) =>
@@ -65,7 +68,9 @@
       group: 0,
       // A header with no real key material (docs show "XXXX" or "...") is not a key.
       validate(value) {
+        // The "\n" in a service-account JSON or an env var is the two characters backslash and n, not a line break.
         const body = value
+          .replace(/\\r\\n|\\n|\\r/g, '\n')
           .split(/\r?\n/)
           .filter((line) => !/^-----/.test(line) && !/^[A-Za-z-]+:/.test(line))
           .join('')
@@ -200,7 +205,7 @@
       category: 'credential',
       severity: 'medium',
       priority: 40,
-      keywords: ['password', 'passwd', 'pwd'],
+      keywords: ['pass', 'pw'],
       pattern: new RegExp(assignment(PASSWORD_KEY), 'i'),
       group: [3, 4, 5],
       validate: (value, ctx) =>
@@ -254,6 +259,37 @@
         if (name === 'key') return value.length >= 16 && V.shannonEntropy(value) >= 3.5; // "?key=" is also an ordinary lookup parameter
         return V.shannonEntropy(value) >= 3.0;
       },
+    },
+    {
+      id: 'cli-credentials',
+      label: 'Password on a command line',
+      category: 'credential',
+      severity: 'medium',
+      priority: 44,
+      keywords: ['-u', '--user', '-p', '-a '],
+      // curl -u user:pass | docker login ... -p pass, sshpass -p pass | mysql -ppass | redis-cli -a pass
+      pattern: new RegExp(
+        [
+          '(?:^|\\s)(?:-u|--user|--proxy-user)(?:\\s+|=)["\']?[^\\s:"\']{1,60}:([^\\s"\']{4,200})',
+          '(?:docker\\s+login|sshpass)\\b[^\\n]*?\\s-p\\s+["\']?([^\\s"\']{4,200})',
+          '\\bmysql(?:dump|admin)?\\b[^\\n]*?\\s-p([^\\s"\'\\-][^\\s"\']{3,200})',
+          '\\bredis-cli\\b[^\\n]*?\\s-a\\s+["\']?([^\\s"\']{4,200})',
+        ].join('|'),
+        'i'
+      ),
+      group: [1, 2, 3, 4],
+      validate: (value) => !V.isPlaceholder(value) && !V.looksLikeCodeReference(value) && !V.isRepetitive(value),
+    },
+    {
+      id: 'netrc-password',
+      label: 'Password in a .netrc entry',
+      category: 'credential',
+      severity: 'medium',
+      priority: 44,
+      keywords: ['machine'],
+      pattern: /\bmachine\s+\S+\s+login\s+\S+\s+password\s+(\S{4,200})/i,
+      group: 1,
+      validate: (value) => !V.isPlaceholder(value) && !V.looksLikeCodeReference(value),
     },
     {
       id: 'cli-secret-flag',

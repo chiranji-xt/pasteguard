@@ -102,12 +102,12 @@
         const latest = insert.readText(target);
         const result = detect.scan(latest, options).findings;
         const redacted = detect.redact(latest, result);
-        const secrets = result.map((f) => f.value);
         stopLive();
         busy = true; // the box is edited in several steps: do not react to our own edits
         let ok = false;
         try {
-          ok = await insert.replaceAll(target, redacted.text, (now) => secrets.every((s) => !now.includes(s)));
+          // Done means a fresh scan of the box finds nothing, which is stricter than "these exact strings are gone".
+          ok = await insert.replaceAll(target, redacted.text, (now) => detect.scan(now, options).findings.length === 0);
         } finally {
           busy = false;
         }

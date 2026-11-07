@@ -90,6 +90,24 @@
     return out;
   }
 
+  // Characters that are invisible but can sit inside a token when it is copied from a web page: zero-width space,
+  // joiners, word joiner, byte-order mark, soft hyphen. They must not hide a secret.
+  const INVISIBLE = /[​-‍⁠﻿­]/;
+
+  /** The text without invisible characters, and for each kept character its position in the original (or null if none). */
+  function withoutInvisible(text) {
+    if (!INVISIBLE.test(text)) return { text, map: null };
+    const kept = [];
+    const map = [];
+    for (let i = 0; i < text.length; i++) {
+      if (!INVISIBLE.test(text[i])) {
+        kept.push(text[i]);
+        map.push(i);
+      }
+    }
+    return { text: kept.join(''), map };
+  }
+
   // --- scanning --------------------------------------------------------------------------------
 
   /**
@@ -109,6 +127,8 @@
     const limit = options.maxChars || MAX_SCAN_CHARS;
     const truncated = text.length > limit;
     if (truncated) text = text.slice(0, limit);
+    const stripped = withoutInvisible(text);
+    text = stripped.text;
 
     const allow = options.allowlist instanceof Set ? options.allowlist : new Set(options.allowlist || []);
     const lower = text.toLowerCase();
@@ -152,7 +172,14 @@
       if (!kept.some((k) => c.start < k.end && k.start < c.end)) kept.push(c);
     }
     kept.sort((a, b) => a.start - b.start);
-    for (const f of kept) delete f.priority;
+    for (const f of kept) {
+      delete f.priority;
+      if (stripped.map) {
+        // Report positions in the text as given, so redaction cuts the right span (invisible characters included).
+        f.start = stripped.map[f.start];
+        f.end = stripped.map[f.end - 1] + 1;
+      }
+    }
     return { findings: kept, truncated };
   }
 

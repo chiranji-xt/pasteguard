@@ -45,7 +45,7 @@ It also watches the message box as you type. If a secret shows up there (typed, 
 
 | | |
 | --- | --- |
-| Detection engine | 202 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
+| Detection engine | 210 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
 | Content script | 48 checks in a real browser against a simulated page, including a rich editor that handles paste itself and (like ProseMirror) is slow to notice a new selection, plus a randomized stress run of the Redact button (30 of 30 across 0, 100 and 250 ms of editor lag). |
 | Options page and popup | Exercised in a real browser: every control, every state. |
 | **Real chat sites** | **ChatGPT, verified by hand:** paste and redact on a 16-case block of tricky made-up secrets (every one redacted, inserted once); 15 lookalikes stayed silent; the typing banner appears without taking focus. Testing found one real bug there (the banner's Redact appended a second copy instead of replacing the text, because the editor learns about a new selection late), now fixed and covered by tests, **awaiting a retest on the real site**. Other sites and Firefox are not yet verified. Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
@@ -74,7 +74,7 @@ Then open the extension's **Settings** and try the **Try it** box.
 | API keys | 36 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid and Twilio | yes |
 | Private keys | SSH, TLS, PGP | yes |
 | Tokens | JWTs, `Authorization: Bearer ...`, Basic auth | yes |
-| Passwords and secrets | `password = "..."`, database URLs with a password, `?api_key=...` in a URL, `--token ...` on a command line | yes |
+| Passwords and secrets | `password = "..."`, `DB_PASS=`, `SESSION_KEY=`, database URLs with a password, `?api_key=...` in a URL, `curl -u user:pass`, `docker login -p`, `mysql -ppass`, `.netrc` entries | yes |
 | Card and bank numbers | Cards (issuer + length + Luhn checksum), IBANs (mod-97) | yes |
 | Government IDs | US Social Security, Indian Aadhaar (Verhoeff checksum), PAN | yes |
 | Email addresses, phone numbers | | no (you paste these on purpose) |
@@ -95,13 +95,29 @@ These are not promises to take on trust: `npm test` runs [`test/privacy.test.js`
 
 ## What it does not do
 
-Be clear about the limits, so it is not mistaken for a guarantee:
+It is a safety net, not a guarantee. These are the cases it leaves, found by probing it with realistic leaks and written down so nobody is surprised.
 
-- It **blocks** what you paste, drop or attach. What you type by hand, dictate or have autofilled can only get a **warning** (a small banner with a one-click Redact), because holding back every keystroke would make the box unusable. A secret you choose to leave in a message you then send is yours to catch.
-- It cannot see text inside **images or PDFs**.
-- It reads at most the first 2 MB of a pasted text or file.
-- Detection is pattern-based, so a secret with no recognisable shape (a plain-English password with no label) can slip through, and rare lookalikes can be flagged by mistake. The ignore button and the sensitivity setting are there for the second case.
-- It only runs on the [listed sites](src/shared/sites.js). Adding a site is a one-line change.
+**Secrets it cannot recognise** (detection is pattern-based):
+
+- **A secret with no shape**: a password in a plain sentence ("my password is Tr0ub4dor&3"), one in a table cell, or a `login / password` line.
+- **A bare random string with no label**: a 32-character hex key, a UUID used as an API key, or any unlabelled random token. The *Random-looking strings* setting finds some of these, but it is off by default because it is noisy.
+- **Deliberately disguised secrets**: reversed, base64- or percent-encoded, spaces between the characters, or a token split across lines (for example hard-wrapped by a terminal). Zero-width characters inside a token *are* handled.
+- **Personal data beyond IDs**: names, addresses, health or legal text. Email addresses and phone numbers are found, but are off by default because people paste them on purpose.
+- **A 12-digit Aadhaar number written without spaces and without the word "Aadhaar"**, because that is indistinguishable from any other 12-digit number.
+
+**Places it cannot look:**
+
+- **Only the [listed sites](src/shared/sites.js).** Not desktop or phone apps, editor chat panels, command-line tools, or a chat widget embedded in another site (it does not run inside iframes). Adding a site is a one-line change.
+- **Files it cannot read as text**: images, PDFs, Word and Excel files, zip archives. It reads plain-text-like files only, and at most the first 2 MB of a file or paste.
+- **A secret pasted in two halves**: each half alone looks harmless.
+- **A site that reads the clipboard itself** from its own "Paste" button, or opens files through the browser's newer file-picker API, never fires the events Paste Guard listens for.
+
+**By design:**
+
+- It **blocks** what you paste, drop or attach. What you type, dictate or have autofilled can only get a **warning** (the banner with a one-click Redact), because holding back every keystroke would make the box unusable. If you send a message in the half second before the banner appears, or dismiss it, it is not stopped.
+- **Paste anyway**, the per-value ignore, pausing a site and turning a category off are all your choice, and all mean the secret goes through.
+
+Rare lookalikes can also be flagged by mistake. The ignore button and the sensitivity setting are there for that.
 
 ## How it works
 
@@ -131,7 +147,7 @@ The engine ([`src/engine`](src/engine)) is plain data and pure functions: rules 
 ## Develop
 
 ```sh
-npm test            # 202 unit tests, no dependencies
+npm test            # 210 unit tests, no dependencies
 npm run build       # dist/chrome and dist/firefox
 npm run package     # also writes the store zips
 npm run harness     # a local page to try it, with "Run all checks" (48 browser checks)

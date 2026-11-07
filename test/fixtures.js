@@ -68,6 +68,13 @@ function pem(label, seed, withEnd = true) {
   return `-----BEGIN ${label}-----\n${lines.join('\n')}\n` + (withEnd ? `-----END ${label}-----` : '');
 }
 
+/** A private key as it appears inside JSON or an environment variable: the line breaks are the two characters \ and n. */
+function pemEscaped(label, seed) {
+  const lines = [];
+  for (let i = 0; i < 4; i++) lines.push(rand(64, 'b64', seed + i));
+  return `-----BEGIN ${label}-----\\n${lines.join('\\n')}\\n-----END ${label}-----\\n`;
+}
+
 /** ruleId -> { positive: [() => text], negative: [text] } */
 const fixtures = {
   'private-key': {
@@ -77,6 +84,9 @@ const fixtures = {
       () => pem('PRIVATE KEY', 3),
       () => pem('EC ' + 'PRIVATE KEY', 4, false), // cut off before the end marker
       () => 'here is my key:\n' + pem('ENCRYPTED ' + 'PRIVATE KEY', 5) + '\nthanks',
+      // Google service-account JSON and one-line env vars write the line breaks out as text
+      () => '{"type":"service_account","private_key":"' + pemEscaped('PRIVATE ' + 'KEY', 6) + '","client_email":"svc@proj.iam.gserviceaccount.com"}',
+      () => 'PRIVATE_KEY="' + pemEscaped('RSA ' + 'PRIVATE KEY', 7) + '"',
     ],
     negative: ['-----BEGIN ' + 'PRIVATE KEY-----\nXXXX\nXXXX\n-----END ' + 'PRIVATE KEY-----', '-----BEGIN ' + 'RSA PRIVATE KEY-----','-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----', 'Never share your private key with anyone.', '-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----'],
   },
@@ -241,11 +251,31 @@ const fixtures = {
     negative: ['https://user:password@example.com/', 'postgres://user:${DB_PASS}@host/db', 'https://github.com/user/repo', 'redis://:@localhost:6379', 'postgres://user:<password>@host/db', 'ftp://anonymous:xxxxxxxx@host/', 'http://evil:thing@example.com/', 'https://alice:s3cretvalue1@docs.example.org/path'],
   },
   'password-assignment': {
-    positive: [() => 'DB_PASSWORD=' + rand(12, 'alnum', 80) + '#9', () => 'password: "' + rand(10, 'alnum', 81) + '!7"', () => '"password": "' + rand(14, 'alnum', 82) + '$"', () => 'admin_passwd = ' + rand(12, 'alnum', 83) + '&1'],
-    negative: ['password = input("Password: ")', 'password: string', 'password=os.environ["DB_PASS"]', "password = request.form['password']", 'new_password = confirm_password', 'password: ********', 'password: <your-password>', 'PASSWORD=${DB_PASSWORD}', 'password = process.env.PASSWORD', 'password: changeme', '"password": "string"', 'password=password', "'pwd': 'library/pwd.html#module-pwd'", 'password_field = "passwd"', 'Given a username and password.\n\n    :param x: the thing',"const passwordPrompt = 'npm password: ';", 'passwd = "test123"', 'password = "demo"', 'password_file: creds.json', 'password_reset_url = "account/reset"'],
+    positive: [
+      () => 'DB_PASSWORD=' + rand(12, 'alnum', 80) + '#9',
+      () => 'password: "' + rand(10, 'alnum', 81) + '!7"',
+      () => '"password": "' + rand(14, 'alnum', 82) + '$"',
+      () => 'admin_passwd = ' + rand(12, 'alnum', 83) + '&1',
+      // short names: pass / pw as a whole word of the name
+      () => 'DB_PASS=' + rand(12, 'alnum', 150) + '#9',
+      () => 'PW=' + rand(12, 'alnum', 151) + '#9',
+      () => 'ssh login pw: ' + rand(12, 'alnum', 152) + '#9',
+      () => 'user.pw = "' + rand(12, 'alnum', 153) + '!"',
+      () => 'DB_PASSPHRASE=' + rand(14, 'alnum', 154) + '#1',
+    ],
+    negative: ['bypass = "something_long_here_ok"', 'compass = "abc123def456ghi"', 'pass = True', 'pass: true', 'pass_through = "x_y_z_q_r_s"', 'PASS=1', 'pw = None', 'DB_PASS=${DB_PASS}', 'DB_PASS=<your-password>', 'password = input("Password: ")', 'password: string', 'password=os.environ["DB_PASS"]', "password = request.form['password']", 'new_password = confirm_password', 'password: ********', 'password: <your-password>', 'PASSWORD=${DB_PASSWORD}', 'password = process.env.PASSWORD', 'password: changeme', '"password": "string"', 'password=password', "'pwd': 'library/pwd.html#module-pwd'", 'password_field = "passwd"', 'Given a username and password.\n\n    :param x: the thing',"const passwordPrompt = 'npm password: ';", 'passwd = "test123"', 'password = "demo"', 'password_file: creds.json', 'password_reset_url = "account/reset"'],
   },
   'secret-assignment': {
-    positive: [() => 'SECRET_KEY=django-insecure-' + rand(40, 'b64url', 84), () => 'export API_TOKEN="' + rand(32, 'alnum', 85) + '"', () => 'client_secret: ' + rand(36, 'b64url', 86), () => '{"access_key": "' + rand(28, 'alnum', 87) + '"}'],
+    positive: [
+      () => 'SECRET_KEY=django-insecure-' + rand(40, 'b64url', 84),
+      () => 'export API_TOKEN="' + rand(32, 'alnum', 85) + '"',
+      () => 'client_secret: ' + rand(36, 'b64url', 86),
+      () => '{"access_key": "' + rand(28, 'alnum', 87) + '"}',
+      () => 'SESSION_KEY=' + rand(40, 'alnum', 155),
+      () => 'ENCRYPTION_KEY=' + rand(44, 'alnum', 156),
+      () => 'JWT_SIGNING_KEY=' + rand(48, 'alnum', 157),
+      () => 'APP_KEY=base64:' + rand(43, 'b64', 158) + '=',
+    ],
     negative: ['token: process.env.GITHUB_TOKEN', 'api_key = os.getenv("KEY")', 'TOKEN=<your-token>', 'secret: ${{ secrets.NPM_TOKEN }}', 'api_key: Optional[str] = None', 'token_type: "bearer"', 'secret_name: my-app-secret', 'max_tokens: 100000', 'API_KEY=your-api-key-here', 'api_key = config.api_key', 'secret = "x"', "token = (tokenize.NAME, 'Hello')", "expected_tokens = [tokenize.TokenInfo(3, 'x')]", 'token: https://example.com/oauth/token', "token_type = 'quoted-string'", "token_type = 'bare-quoted-string'", 'secret_name: production_database_credentials', 'key_path = "keys/service-account-prod.json"', 'description: "the secret token used for signing requests"'],
   },
   'url-query-secret': {
@@ -266,6 +296,34 @@ const fixtures = {
       'https://example.org/?secret=true',
       'https://example.org/?token=bare-quoted-string-words',
     ],
+  },
+  'cli-credentials': {
+    positive: [
+      () => 'curl -u admin:' + rand(14, 'alnum', 160) + '! https://api.example.dev/v1/me',
+      () => 'curl --user ravi:' + rand(14, 'alnum', 161) + '# https://api.example.dev/',
+      () => 'docker login -u ravi -p ' + rand(14, 'alnum', 162) + '! registry.example.dev',
+      () => "sshpass -p '" + rand(14, 'alnum', 163) + "#' ssh deploy@10.0.0.5",
+      () => 'mysql -u root -p' + rand(14, 'alnum', 164) + '# -h db.internal',
+      () => 'redis-cli -a ' + rand(20, 'alnum', 165) + ' ping',
+    ],
+    negative: [
+      'mysql -u root -p mydb',
+      'mysql -u root -p',
+      'docker login -u ravi',
+      'docker run -p 8080:80 nginx',
+      'ssh -p 2222 deploy@host',
+      'curl -u admin https://api.example.dev/',
+      'curl -u admin:$PASSWORD https://api.example.dev/',
+      'curl -u admin:${API_PASS} https://api.example.dev/',
+      'redis-cli -a $REDIS_PASS ping',
+      'ls -a /tmp',
+      'psql -U ravi -d mydb',
+      'sshpass -p $SSH_PASS ssh deploy@host',
+    ],
+  },
+  'netrc-password': {
+    positive: [() => 'machine api.example.dev login ravi password ' + rand(14, 'alnum', 166) + '!'],
+    negative: ['machine api.example.dev login ravi password ${PASS}', 'machine api.example.dev login ravi', 'machine api.example.dev login ravi password <your-password>'],
   },
   'cli-secret-flag': {
     positive: [() => 'mytool --password=' + rand(14, 'alnum', 88) + '#1', () => 'mytool login --token ' + rand(30, 'alnum', 89), () => "mytool --api-key '" + rand(24, 'b64url', 90) + "'"],
