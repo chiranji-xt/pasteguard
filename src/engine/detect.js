@@ -108,6 +108,85 @@
     return { text: kept.join(''), map };
   }
 
+  /**
+   * Run `rules` over `text`, pushing candidate findings. With `joined` (text whose line breaks were closed up), spans are
+   * mapped back to the original text and only those that span a removed break are kept.
+   */
+  function collect(rules, text, lower, allow, out, joined) {
+    for (const rule of rules) {
+      if (rule.keywords && !rule.keywords.some((k) => lower.includes(k))) continue;
+      const re = compile(rule);
+      let match;
+      while ((match = re.exec(text)) !== null) {
+        if (match[0].length === 0) {
+          re.lastIndex++;
+          continue;
+        }
+        const span = spanOf(match, rule.group === undefined ? 1 : rule.group);
+        if (!span) continue;
+        let [start, end] = span;
+        const value = text.slice(start, end);
+        const ctx = { text, start, end, match, before: text.slice(Math.max(0, start - 120), start), after: text.slice(end, end + 40) };
+        if (rule.validate && !rule.validate(value, ctx)) continue;
+        if (allow.size && allow.has(H.sha256Hex(value))) continue;
+        if (joined) {
+          const from = joined.map[start];
+          const to = joined.map[end - 1] + 1;
+          if (!joined.breaks.some((b) => b > from && b < to)) continue;
+          start = from;
+          end = to;
+        }
+        out.push({
+          ruleId: rule.id,
+          label: rule.label,
+          category: rule.category,
+          severity: rule.severity,
+          priority: rule.priority || 0,
+          tag: tagFor(rule),
+          start,
+          end,
+          value,
+        });
+      }
+    }
+  }
+
+  // The next line continues a token if its first word looks like part of one (a digit, "-" or "_", or a long run), not like prose.
+  const MAX_JOINS = 200;
+  const continuesToken = (word) => /[0-9_-]/.test(word) || word.length >= 10;
+
+  /** The text with line breaks removed where a token seems to continue on the next line; null if there are none. */
+  function joinWrappedLines(text) {
+    if (text.indexOf('\n') === -1) return null;
+    const TOKEN = /[A-Za-z0-9_\-+/=.]/;
+    const kept = [];
+    const map = [];
+    const breaks = [];
+    let i = 0;
+    while (i < text.length) {
+      const c = text[i];
+      if (c === '\n' || c === '\r') {
+        let j = i;
+        while (j < text.length && j - i < 8 && /[ \t\r\n]/.test(text[j])) j++;
+        const before = kept.length ? kept[kept.length - 1] : '';
+        let k = kept.length;
+        while (k > 0 && kept.length - k < 64 && !/\s/.test(kept[k - 1])) k--;
+        const lastWordLength = kept.length - k;
+        let e = j;
+        while (e < text.length && e - j < 64 && !/\s/.test(text[e])) e++;
+        if (TOKEN.test(before) && j < text.length && TOKEN.test(text[j]) && lastWordLength >= 6 && continuesToken(text.slice(j, e))) {
+          if (breaks.push(i) > MAX_JOINS) return null; // a wall of wrapped lines is a log or a dump, not one token
+          i = j;
+          continue;
+        }
+      }
+      kept.push(c);
+      map.push(i);
+      i++;
+    }
+    return breaks.length ? { text: kept.join(''), map, breaks } : null;
+  }
+
   // --- scanning --------------------------------------------------------------------------------
 
   /**
@@ -135,34 +214,15 @@
     const candidates = [];
     const active = R.rules.filter((rule) => isEnabled(rule, options)).concat(customRules(options.customPatterns));
 
-    for (const rule of active) {
-      if (rule.keywords && !rule.keywords.some((k) => lower.includes(k))) continue;
-      const re = compile(rule);
-      let match;
-      while ((match = re.exec(text)) !== null) {
-        if (match[0].length === 0) {
-          re.lastIndex++;
-          continue;
-        }
-        const span = spanOf(match, rule.group === undefined ? 1 : rule.group);
-        if (!span) continue;
-        const [start, end] = span;
-        const value = text.slice(start, end);
-        const ctx = { text, start, end, match, before: text.slice(Math.max(0, start - 120), start), after: text.slice(end, end + 40) };
-        if (rule.validate && !rule.validate(value, ctx)) continue;
-        if (allow.size && allow.has(H.sha256Hex(value))) continue;
-        candidates.push({
-          ruleId: rule.id,
-          label: rule.label,
-          category: rule.category,
-          severity: rule.severity,
-          priority: rule.priority || 0,
-          tag: tagFor(rule),
-          start,
-          end,
-          value,
-        });
-      }
+    collect(active, text, lower, allow, candidates, null);
+
+    // Chat boxes and PDFs wrap long tokens onto the next line. Look again at the text with such line breaks closed up,
+    // for provider keys only, and keep a finding only if it really crosses a join (the rest was found already).
+    const joined = joinWrappedLines(text);
+    if (joined) {
+      const wrapped = [];
+      collect(active.filter((r) => r.category === 'apiKey' && r.id !== 'private-key'), joined.text, joined.text.toLowerCase(), allow, wrapped, joined);
+      for (const c of wrapped) candidates.push(c);
     }
 
     // When two findings overlap, keep the more specific rule (higher priority), then the longer one.

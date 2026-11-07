@@ -314,3 +314,28 @@ test('a typical large paste (1 MB of code and logs) scans quickly', () => {
   const ms = timed('1 MB of code', line.repeat(Math.ceil(1000000 / line.length)), 1500);
   assert.ok(ms >= 0);
 });
+
+// --- keys wrapped onto several lines (chat boxes, PDFs, emails break long tokens) ----------------
+
+test('a provider key wrapped across lines is found and redacted whole', () => {
+  const k = 'sk-' + 'ant-api03-' + rand(93, 'b64url', 5);
+  const texts = [
+    `my key is ${k.slice(0, 40)}\n${k.slice(40)}\nthanks`,
+    `key:\n${k.slice(0, 40)}\r\n   ${k.slice(40, 70)}\n${k.slice(70)}`,
+  ];
+  for (const text of texts) {
+    const result = scan(text, DEFAULTS);
+    assert.equal(result.findings.length, 1, JSON.stringify(text.slice(0, 80)));
+    const out = redact(text, result.findings);
+    const redacted = typeof out === 'string' ? out : out.text;
+    assert.ok(!redacted.includes(k.slice(0, 40)) && !redacted.includes(k.slice(70)), 'no part of the key may remain');
+  }
+});
+
+test('line breaks next to ordinary prose are not joined', () => {
+  assert.equal(scan('line one is here\nline two goes there\nsk-learn is nice', DEFAULTS).findings.length, 0);
+  const k = 'sk-' + 'ant-api03-' + rand(93, 'b64url', 5);
+  const result = scan(`${k}\nthanks a lot`, DEFAULTS);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].end, k.length, 'the word after the key must stay outside it');
+});
