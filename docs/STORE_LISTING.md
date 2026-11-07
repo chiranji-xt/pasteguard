@@ -59,6 +59,7 @@ Detect and redact secrets and personal data in text before it is pasted into AI 
 - **Content script on the listed sites:** Reads the text of paste, drop and file-attach events, and (unless switched off) the text in the message box as the user types, on the listed AI chat sites so it can be checked for secrets. All processing is local; nothing is transmitted.
 - **storage:** Saves the user's settings, the list of values they chose to ignore (as one-way hashes), and five usage counters. No pasted content is stored.
 - **activeTab:** Lets the toolbar popup show whether the current tab is a protected site, only when the user opens the popup.
+- **scripting + optional host access (`https://*/*`, optional):** Used only when the user presses "Protect this site" in the popup to add an AI chat site that is not on the built-in list. The browser asks the user for that one site; nothing is requested at install time. The same local content scripts are registered for that site, and "Stop protecting" removes them and the permission.
 
 ## Data disclosures (Chrome Web Store "Privacy practices" tab)
 

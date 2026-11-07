@@ -33,8 +33,9 @@ If you use a browser account with sync, your browser vendor syncs the **settings
 | Run on the listed AI chat sites (`content_scripts` matches) | To see text before the page receives it. Only those sites are listed; there is no "all sites" access. |
 | `storage` | To save your settings, ignore list and counters. |
 | `activeTab` | So the toolbar popup can tell you whether the tab you are looking at is protected, only when you open it. |
+| `scripting`, and optional access to a single site | Only used when you press **Protect this site** in the popup for a site that is not on the built-in list. Your browser then asks you for access to that one site, nothing is granted in advance, and **Stop protecting** removes it again. The site name is stored in your settings. |
 
-There is no background process, no host permission, no access to your browsing history, tabs list, cookies or downloads.
+There is no background process, no access you did not grant to a site, and no access to your browsing history, tabs list, cookies or downloads. Files you attach (including Word, Excel, PowerPoint and zip files) are opened and read inside your browser to check them; nothing is uploaded.
 
 ## The dialog
 

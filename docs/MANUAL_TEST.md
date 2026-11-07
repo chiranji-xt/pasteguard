@@ -36,6 +36,11 @@ Do these in the site's normal message box. Tick them off in the release notes.
 | 15 | Press **Redact** on that banner | The secret is replaced by a `[REDACTED:...]` label, **the original is gone** (not left in the box with the redacted copy added after it), the rest of your text is intact, and the banner goes away. Allow about a quarter of a second. |
 | 16 | Type a secret again, then send the message (Enter) | The banner disappears once the box clears. |
 | 17 | Paste the example, choose **Paste anyway**, then keep typing | No banner for the value you chose to keep. |
+| 18 | Type or paste (with Paste Guard paused) a made-up key, then press **Enter** | The send is held and a dialog says the message has not been sent. **Redact the message** changes the box and does not send; you press Enter again to send. |
+| 19 | Same, then press the site's **Send** button instead | Held in the same way. A message with no secret sends normally, with no dialog. |
+| 20 | Attach a `.docx` or `.xlsx` whose text contains a made-up key, and a `.zip` holding a `.env` | The file dialog appears for each. A normal document attaches without a dialog. |
+| 21 | Paste a made-up key that you broke across two lines | The dialog lists it as one item. |
+| 22 | On a site that is not on the built-in list, open the popup and press **Protect <host>** | The browser asks for access to that one site. After allowing, the popup says "Protecting <host>" and a paste of the example on that page shows the dialog. **Stop protecting** removes it. |
 
 If a step fails, note the site, browser and version, and which step. Do **not** paste a real secret into a bug report; the example block reproduces it.
 
@@ -45,4 +50,4 @@ Steps 3, 4, 9 and 10 are the likeliest to differ: Firefox handles events created
 
 ## The simulated page
 
-`npm run harness` serves a page that loads the real scripts. Press **Run all checks** to run 48 checks in about half a minute (the typing checks wait for the short delay). Run this first; if it fails, nothing on a real site will work.
+`npm run harness` serves a page that loads the real scripts. Press **Run all checks** to run 57 checks in about half a minute (the typing checks wait for the short delay). Run this first; if it fails, nothing on a real site will work.

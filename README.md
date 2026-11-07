@@ -45,8 +45,8 @@ It also watches the message box as you type. If a secret shows up there (typed, 
 
 | | |
 | --- | --- |
-| Detection engine | 211 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
-| Content script | 48 checks in a real browser against a simulated page, including a rich editor that handles paste itself and (like ProseMirror) is slow to notice a new selection, plus a randomized stress run of the Redact button (30 of 30 across 0, 100 and 250 ms of editor lag). |
+| Detection engine | 355 automated tests, including a corpus of innocent text that must stay silent, worst-case timing, and an audit against real code (the Python standard library, npm, installed packages). |
+| Content script | 57 checks in a real browser against a simulated page, including a rich editor that handles paste itself and (like ProseMirror) is slow to notice a new selection, plus a randomized stress run of the Redact button (30 of 30 across 0, 100 and 250 ms of editor lag). |
 | Options page and popup | Exercised in a real browser: every control, every state. |
 | **Real chat sites** | **ChatGPT, verified by hand:** paste and redact on a 16-case block of tricky made-up secrets (every one redacted, inserted once); 15 lookalikes stayed silent; the typing banner appears without taking focus. Testing found one real bug there (the banner's Redact appended a second copy instead of replacing the text, because the editor learns about a new selection late); it is fixed, covered by tests, and **confirmed fixed by hand on the real site**. Other sites and Firefox are not yet verified. Each site's editor can change without notice. [docs/MANUAL_TEST.md](docs/MANUAL_TEST.md) is the checklist. Please report anything that misbehaves. |
 | Firefox | Built and linted in CI, but needs real-world testing. |
@@ -71,7 +71,7 @@ Then open the extension's **Settings** and try the **Try it** box.
 
 | Category | Examples | On by default |
 | --- | --- | --- |
-| API keys | 36 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid and Twilio | yes |
+| API keys | 102 provider formats, including OpenAI, Anthropic, Google, AWS, GitHub, GitLab, Stripe, Slack, Hugging Face, Groq, npm, PyPI, SendGrid, Twilio, Doppler, Grafana, HashiCorp Vault, Sentry, Tailscale, Postman, Pulumi, Dropbox, Atlassian, 1Password, Fly.io, Netlify, PlanetScale and more. A key that was hard-wrapped onto several lines is found too | yes |
 | Private keys | SSH, TLS, PGP | yes |
 | Tokens | JWTs, `Authorization: Bearer ...`, Basic auth | yes |
 | Passwords and secrets | `password = "..."`, `DB_PASS=`, `SESSION_KEY=`, database URLs with a password, `?api_key=...` in a URL, `curl -u user:pass`, `docker login -p`, `mysql -ppass`, `.netrc` entries | yes |
@@ -86,7 +86,7 @@ It is built to stay quiet: placeholders (`<your-token>`, `${API_KEY}`, `changeme
 ## Privacy, and how to check it
 
 - **No network code.** No `fetch`, `XMLHttpRequest`, WebSocket or beacon anywhere. No analytics, no telemetry.
-- **Minimal permissions.** It runs only on the listed chat sites (no "all sites" access), plus `storage` and `activeTab`. No background process, no access to your tabs, history or cookies.
+- **Minimal permissions.** It runs only on the listed chat sites, plus `storage`, `activeTab` and `scripting`. `scripting` is used only when you press **Protect this site** for a site that is not on the list; your browser then asks for that one site, and you can take it back in the same place. No "all sites" access is granted up front, no background process, no access to your tabs, history or cookies.
 - **Nothing you paste is stored**, including when it contains a secret. It keeps your settings, one-way fingerprints of values you chose to ignore, and five counters.
 - **No `eval`, no `innerHTML`.** Nothing from the clipboard is ever turned into HTML or code.
 - **The dialog never shows a full secret**, only a short masked preview.
@@ -101,14 +101,14 @@ It is a safety net, not a guarantee. These are the cases it leaves, found by pro
 
 - **A secret with no shape**: a password in a plain sentence ("my password is Tr0ub4dor&3"), one in a table cell, or a `login / password` line.
 - **A bare random string with no label**: a 32-character hex key, a UUID used as an API key, or any unlabelled random token. The *Random-looking strings* setting finds some of these, but it is off by default because it is noisy.
-- **Deliberately disguised secrets**: reversed, base64- or percent-encoded, spaces between the characters, or a token split across lines (for example hard-wrapped by a terminal). Zero-width characters inside a token *are* handled.
+- **Deliberately disguised secrets**: reversed, base64- or percent-encoded, spaces between the characters, or a token split in two pieces with other text between them. Zero-width characters inside a token *are* handled.
 - **Personal data beyond IDs**: names, addresses, health or legal text. Email addresses and phone numbers are found, but are off by default because people paste them on purpose.
 - **A 12-digit Aadhaar number written without spaces and without the word "Aadhaar"**, because that is indistinguishable from any other 12-digit number.
 
 **Places it cannot look:**
 
-- **Only the [listed sites](src/shared/sites.js).** Not desktop or phone apps, editor chat panels, command-line tools, or a chat widget embedded in another site (it does not run inside iframes). Adding a site is a one-line change.
-- **Files it cannot read as text**: images, PDFs, Word and Excel files, zip archives. It reads plain-text-like files only, and at most the first 2 MB of a file or paste.
+- **Only the [listed sites](src/shared/sites.js) (45 of them) and sites you add with **Protect this site** in the toolbar popup.** Not desktop or phone apps, editor chat panels, command-line tools, or a chat widget embedded in another site (it does not run inside iframes).
+- **Files it cannot read as text**: images, PDFs, scanned documents, password-protected or damaged archives. It reads plain-text-like files (first 2 MB), and the text inside Word, Excel, PowerPoint and OpenDocument files and zip archives (up to 12 MB, nothing nested).
 - **A secret pasted in two halves**: each half alone looks harmless.
 - **A site that reads the clipboard itself** from its own "Paste" button, or opens files through the browser's newer file-picker API, never fires the events Paste Guard listens for.
 
@@ -147,10 +147,10 @@ The engine ([`src/engine`](src/engine)) is plain data and pure functions: rules 
 ## Develop
 
 ```sh
-npm test            # 211 unit tests, no dependencies
+npm test            # 355 unit tests, no dependencies
 npm run build       # dist/chrome and dist/firefox
 npm run package     # also writes the store zips
-npm run harness     # a local page to try it, with "Run all checks" (48 browser checks)
+npm run harness     # a local page to try it, with "Run all checks" (57 browser checks)
 npm run audit -- <folder>   # scan real code for false positives
 ```
 
