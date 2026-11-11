@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/readme-banner.svg" alt="pasteguard" width="100%"/>
+</p>
+
 # Paste Guard
 
 **Stop pasting secrets into AI chats.**
